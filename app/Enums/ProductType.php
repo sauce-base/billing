@@ -25,7 +25,11 @@ enum ProductType: string implements JsonSerializable
      */
     public function label(): string
     {
-        return __("billing::billing.product_types.{$this->value}.label");
+        return match ($this) {
+            self::FREEMIUM => __('Free Plan'),
+            self::SUBSCRIPTION => __('Subscription'),
+            self::ONE_TIME => __('One-time Purchase'),
+        };
     }
 
     /**
@@ -33,7 +37,11 @@ enum ProductType: string implements JsonSerializable
      */
     public function description(): string
     {
-        return __("billing::billing.product_types.{$this->value}.description");
+        return match ($this) {
+            self::FREEMIUM => __('Free tier with limited features'),
+            self::SUBSCRIPTION => __('Recurring payment plan (monthly/yearly)'),
+            self::ONE_TIME => __('Single payment product (setup fees, credits, etc.)'),
+        };
     }
 
     public function jsonSerialize(): mixed
