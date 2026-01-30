@@ -50,11 +50,6 @@ class ProductsTable
                         ProductType::ONE_TIME => 'warning',
                     }),
 
-                TextColumn::make('display_order')
-                    ->label(__('Display Order'))
-                    ->sortable()
-                    ->numeric(),
-
                 ToggleColumn::make('is_active')
                     ->onColor('success'),
 
@@ -114,6 +109,7 @@ class ProductsTable
                     RestoreBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('display_order', 'asc');
+            ->defaultSort('display_order', 'asc')
+            ->reorderable('display_order');
     }
 }
