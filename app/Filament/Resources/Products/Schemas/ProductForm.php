@@ -32,20 +32,6 @@ class ProductForm
                                     ->maxLength(255)
                                     ->columnSpanFull(),
 
-                                TextInput::make('sku')
-                                    ->label(__('SKU'))
-                                    ->required()
-                                    ->unique(ignoreRecord: true)
-                                    ->alphaDash()
-                                    ->maxLength(100),
-
-                                TextInput::make('slug')
-                                    ->label(__('Slug'))
-                                    ->unique(ignoreRecord: true)
-                                    ->alphaDash()
-                                    ->maxLength(255)
-                                    ->helperText(__('Leave empty to auto-generate from product name')),
-
                                 Select::make('type')
                                     ->label(__('Type'))
                                     ->required()
@@ -54,14 +40,23 @@ class ProductForm
                                             fn (ProductType $type) => [$type->value => $type->label()]
                                         )->toArray()
                                     )
+                                    ->helperText(__('Select the type of product. This may affect how the product is used in the system.'))
                                     ->native(false),
 
-                                TextInput::make('display_order')
-                                    ->label(__('Display Order'))
-                                    ->numeric()
-                                    ->required()
-                                    ->default(0)
-                                    ->minValue(0),
+                                TextInput::make('sku')
+                                    ->label(__('SKU'))
+                                    ->unique(ignoreRecord: true)
+                                    ->alphaDash()
+                                    ->helperText(__('Leave empty to auto-generate from product name'))
+                                    ->maxLength(100),
+
+                                TextInput::make('slug')
+                                    ->label(__('Slug'))
+                                    ->unique(ignoreRecord: true)
+                                    ->alphaDash()
+                                    ->maxLength(255)
+                                    ->helperText(__('Leave empty to auto-generate from product name'))
+                                    ->columnSpanFull(),
 
                                 RichEditor::make('description')
                                     ->label(__('Description'))
@@ -92,7 +87,7 @@ class ProductForm
                             ])
                             ->columns(1),
 
-                        Section::make(__('Features'))
+                        Section::make(__('Marketing feature list'))
                             ->description(__('List the key features or benefits of this product. These will be displayed as bullet points.'))
                             ->schema([
                                 Repeater::make('features')

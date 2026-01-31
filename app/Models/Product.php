@@ -63,6 +63,10 @@ class Product extends Model
             'slug' => [
                 'source' => 'name',
             ],
+            'sku' => [
+                'source' => 'name',
+                'separator' => '_',
+            ],
         ];
     }
 

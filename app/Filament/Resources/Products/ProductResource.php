@@ -5,6 +5,8 @@ namespace Modules\Billing\Filament\Resources\Products;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Model;
 use Modules\Billing\Filament\Resources\Products\Pages\CreateProduct;
 use Modules\Billing\Filament\Resources\Products\Pages\EditProduct;
 use Modules\Billing\Filament\Resources\Products\Pages\ListProducts;
@@ -20,41 +22,19 @@ class ProductResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $recordTitleAttribute = 'name';
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'sku', 'slug'];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string|Htmlable
+    {
+        return $record->name;
+    }
 
     public static function getNavigationGroup(): ?string
     {
         return __('Billing');
-    }
-
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
-    {
-        return true;
-    }
-
-    public static function canForceDelete(\Illuminate\Database\Eloquent\Model $record): bool
-    {
-        return true;
-    }
-
-    public static function canRestore(\Illuminate\Database\Eloquent\Model $record): bool
-    {
-        return true;
-    }
-
-    public static function canDeleteAny(): bool
-    {
-        return true;
-    }
-
-    public static function canForceDeleteAny(): bool
-    {
-        return true;
-    }
-
-    public static function canRestoreAny(): bool
-    {
-        return true;
     }
 
     public static function getNavigationLabel(): string

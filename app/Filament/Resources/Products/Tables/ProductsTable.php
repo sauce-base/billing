@@ -26,13 +26,11 @@ class ProductsTable
                 TextColumn::make('name')
                     ->label(__('Name'))
                     ->searchable()
-                    ->sortable()
                     ->limit(50),
 
                 TextColumn::make('sku')
                     ->label(__('SKU'))
                     ->searchable()
-                    ->sortable()
                     ->copyable(),
 
                 TextColumn::make('slug')
@@ -62,19 +60,16 @@ class ProductsTable
                 TextColumn::make('created_at')
                     ->label(__('Created At'))
                     ->dateTime()
-                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('updated_at')
                     ->label(__('Updated At'))
                     ->dateTime()
-                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('deleted_at')
                     ->label(__('Deleted At'))
                     ->dateTime()
-                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
