@@ -11,15 +11,24 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('subscription_plans', function (Blueprint $table) {
+        Schema::create('payment_providers', function (Blueprint $table) {
             $table->id();
+
+            // Identifiers
             $table->string('name');
             $table->string('slug')->unique();
-            $table->text('description')->nullable();
-            $table->json('provider_ids')->nullable();
-            $table->json('features')->nullable();
-            $table->boolean('is_active')->default(true);
+
+            // Configuration
+            $table->json('config')->nullable();
+
+            // Status
+            $table->boolean('is_active')->default(false);
+
+            // Timestamps
             $table->timestamps();
+
+            // Indexes
+            $table->index('is_active');
         });
     }
 
@@ -28,6 +37,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('subscription_plans');
+        Schema::dropIfExists('payment_providers');
     }
 };

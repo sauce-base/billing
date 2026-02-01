@@ -11,11 +11,9 @@ use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
-use Modules\Billing\Enums\ProductType;
 
 class ProductsTable
 {
@@ -37,16 +35,6 @@ class ProductsTable
                     ->label(__('Slug'))
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('type')
-                    ->label(__('Type'))
-                    ->badge()
-                    ->formatStateUsing(fn (ProductType $state) => $state->label())
-                    ->color(fn (ProductType $state): string => match ($state) {
-                        ProductType::FREEMIUM => 'success',
-                        ProductType::SUBSCRIPTION => 'primary',
-                        ProductType::ONE_TIME => 'warning',
-                    }),
 
                 ToggleColumn::make('is_active')
                     ->onColor('success'),
@@ -73,13 +61,6 @@ class ProductsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('type')
-                    ->label(__('Type'))
-                    ->options(fn () => collect(ProductType::cases())->mapWithKeys(
-                        fn (ProductType $type) => [$type->value => $type->label()]
-                    ))
-                    ->multiple(),
-
                 TernaryFilter::make('is_active')
                     ->label(__('Active Only')),
 

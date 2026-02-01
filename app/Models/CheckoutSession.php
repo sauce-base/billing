@@ -5,10 +5,9 @@ namespace Modules\Billing\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Modules\Billing\Enums\SubscriptionStatus;
+use Modules\Billing\Enums\CheckoutSessionStatus;
 
-class Subscription extends Model
+class CheckoutSession extends Model
 {
     use HasFactory;
 
@@ -16,15 +15,12 @@ class Subscription extends Model
         'customer_id',
         'price_id',
         'payment_method_id',
-        'provider_subscription_id',
+        'provider_session_id',
+        'success_url',
+        'cancel_url',
         'status',
-        'trial_starts_at',
-        'trial_ends_at',
-        'current_period_starts_at',
-        'current_period_ends_at',
-        'cancelled_at',
-        'ends_at',
         'metadata',
+        'expires_at',
     ];
 
     /**
@@ -33,14 +29,9 @@ class Subscription extends Model
     protected function casts(): array
     {
         return [
-            'status' => SubscriptionStatus::class,
-            'trial_starts_at' => 'datetime',
-            'trial_ends_at' => 'datetime',
-            'current_period_starts_at' => 'datetime',
-            'current_period_ends_at' => 'datetime',
-            'cancelled_at' => 'datetime',
-            'ends_at' => 'datetime',
+            'status' => CheckoutSessionStatus::class,
             'metadata' => 'array',
+            'expires_at' => 'datetime',
         ];
     }
 
@@ -66,13 +57,5 @@ class Subscription extends Model
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class);
-    }
-
-    /**
-     * @return HasMany<Payment, $this>
-     */
-    public function payments(): HasMany
-    {
-        return $this->hasMany(Payment::class);
     }
 }

@@ -4,7 +4,6 @@ namespace Modules\Billing\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
-use Modules\Billing\Enums\ProductType;
 use Modules\Billing\Models\Product;
 
 /**
@@ -28,7 +27,6 @@ class ProductFactory extends Factory
             'slug' => Str::slug($name),
             'name' => $name,
             'description' => fake()->sentence(12),
-            'type' => fake()->randomElement(ProductType::cases()),
             'display_order' => fake()->numberBetween(0, 10),
             'is_visible' => true,
             'is_highlighted' => false,
@@ -49,54 +47,6 @@ class ProductFactory extends Factory
             'support' => fake()->randomElement(['community', 'email', 'priority', '24/7']),
             'api_calls_per_month' => fake()->randomElement([1000, 10000, 100000, 'unlimited']),
         ];
-    }
-
-    /**
-     * Indicate that the product is a freemium plan.
-     */
-    public function freemium(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'type' => ProductType::FREEMIUM,
-            'name' => 'Free Plan',
-            'sku' => 'FREE',
-            'slug' => 'free-plan',
-            'is_active' => true,
-            'display_order' => 0,
-            'features' => [
-                'storage_gb' => 5,
-                'max_users' => 1,
-                'support' => 'community',
-                'api_calls_per_month' => 1000,
-            ],
-        ]);
-    }
-
-    /**
-     * Indicate that the product is a subscription plan.
-     */
-    public function subscription(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'type' => ProductType::SUBSCRIPTION,
-            'name' => fake()->randomElement(['Basic', 'Pro', 'Premium', 'Enterprise']).' Plan',
-        ]);
-    }
-
-    /**
-     * Indicate that the product is a one-time purchase.
-     */
-    public function oneTime(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'type' => ProductType::ONE_TIME,
-            'name' => fake()->randomElement([
-                'Setup Service',
-                'Custom Integration',
-                'Training Package',
-                'Credit Pack',
-            ]),
-        ]);
     }
 
     /**
@@ -176,7 +126,6 @@ class ProductFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'name' => 'Starter Plan',
-            'type' => ProductType::SUBSCRIPTION,
             'sku' => 'STARTER',
             'slug' => 'starter-plan',
             'display_order' => 1,
@@ -198,7 +147,6 @@ class ProductFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'name' => 'Pro Plan',
-            'type' => ProductType::SUBSCRIPTION,
             'sku' => 'PRO',
             'slug' => 'pro-plan',
             'display_order' => 2,
@@ -221,7 +169,6 @@ class ProductFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'name' => 'Enterprise Plan',
-            'type' => ProductType::SUBSCRIPTION,
             'sku' => 'ENTERPRISE',
             'slug' => 'enterprise-plan',
             'display_order' => 3,

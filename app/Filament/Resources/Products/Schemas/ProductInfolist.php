@@ -8,7 +8,6 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Modules\Billing\Enums\ProductType;
 
 class ProductInfolist
 {
@@ -31,16 +30,6 @@ class ProductInfolist
                         TextEntry::make('sku')
                             ->label(__('SKU'))
                             ->copyable(),
-
-                        TextEntry::make('type')
-                            ->label(__('Type'))
-                            ->badge()
-                            ->formatStateUsing(fn (ProductType $state) => $state->label())
-                            ->color(fn (ProductType $state): string => match ($state) {
-                                ProductType::FREEMIUM => 'success',
-                                ProductType::SUBSCRIPTION => 'primary',
-                                ProductType::ONE_TIME => 'warning',
-                            }),
 
                         TextEntry::make('description')
                             ->label(__('Description'))

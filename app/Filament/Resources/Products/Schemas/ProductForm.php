@@ -5,14 +5,12 @@ namespace Modules\Billing\Filament\Resources\Products\Schemas;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
-use Modules\Billing\Enums\ProductType;
 
 class ProductForm
 {
@@ -31,17 +29,6 @@ class ProductForm
                                     ->required()
                                     ->maxLength(255)
                                     ->columnSpanFull(),
-
-                                Select::make('type')
-                                    ->label(__('Type'))
-                                    ->required()
-                                    ->options(
-                                        collect(ProductType::cases())->mapWithKeys(
-                                            fn (ProductType $type) => [$type->value => $type->label()]
-                                        )->toArray()
-                                    )
-                                    ->helperText(__('Select the type of product. This may affect how the product is used in the system.'))
-                                    ->native(false),
 
                                 TextInput::make('sku')
                                     ->label(__('SKU'))
@@ -124,17 +111,6 @@ class ProductForm
                             ->schema([
                                 Text::make(__('Basic Information'))
                                     ->content(__('Start by entering the product name, SKU (unique identifier), and a URL-friendly slug. The display order determines how products appear in lists (lower numbers first).')),
-
-                                Text::make(__('Product Types'))
-                                    ->content(function () {
-                                        $types = collect(ProductType::cases())
-                                            ->map(fn (ProductType $type) => "**{$type->label()}**: {$type->description()}")
-                                            ->join("\n\n");
-
-                                        return new \Illuminate\Support\HtmlString(
-                                            str($types)->markdown()->toHtmlString()
-                                        );
-                                    }),
 
                                 Text::make(__('Features'))
                                     ->content(__('List the key features or benefits of this product. These will be displayed as bullet points to help customers understand what they get (e.g., "Unlimited storage", "24/7 support", "Advanced analytics").')),

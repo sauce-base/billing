@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Modules\Billing\Enums\ProductType;
 
 class Product extends Model
 {
@@ -26,7 +26,6 @@ class Product extends Model
         'slug',
         'name',
         'description',
-        'type',
         'display_order',
         'is_visible',
         'is_highlighted',
@@ -43,7 +42,6 @@ class Product extends Model
     protected function casts(): array
     {
         return [
-            'type' => ProductType::class,
             'features' => 'array',
             'metadata' => 'array',
             'is_active' => 'boolean',
@@ -89,11 +87,10 @@ class Product extends Model
     }
 
     /**
-     * Scope a query to only include products of a given type.
+     * @return HasMany<Price, $this>
      */
-    #[Scope]
-    protected function ofType(Builder $query, ProductType|string $type): void
+    public function prices(): HasMany
     {
-        $query->where('type', $type);
+        return $this->hasMany(Price::class);
     }
 }

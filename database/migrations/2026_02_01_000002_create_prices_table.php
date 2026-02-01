@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Modules\Billing\Models\Product;
 
 return new class extends Migration
 {
@@ -11,22 +12,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('products', function (Blueprint $table) {
+        Schema::create('prices', function (Blueprint $table) {
             $table->id();
 
-            // Identifiers
-            $table->string('sku')->unique();
-            $table->string('slug')->unique();
-            $table->string('name');
-            $table->text('description')->nullable();
+            // Foreign keys
+            $table->foreignIdFor(Product::class)->constrained()->cascadeOnDelete();
 
-            // Display & Marketing
-            $table->integer('display_order')->default(0);
-            $table->boolean('is_visible')->default(true);
-            $table->boolean('is_highlighted')->default(false);
+            // Identifiers
+            $table->string('provider_price_id')->nullable();
+
+            // Pricing
+            $table->string('currency', 3);
+            $table->unsignedBigInteger('amount');
+            $table->string('billing_scheme')->default('flat_amount');
+
+            // Billing interval
+            $table->string('interval')->nullable();
+            $table->unsignedInteger('interval_count')->nullable();
 
             // Configuration
-            $table->json('features')->nullable();
             $table->json('metadata')->nullable();
 
             // Status
@@ -34,11 +38,10 @@ return new class extends Migration
 
             // Timestamps
             $table->timestamps();
-            $table->softDeletes();
 
             // Indexes
+            $table->index('provider_price_id');
             $table->index('is_active');
-            $table->index('deleted_at');
         });
     }
 
@@ -47,6 +50,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('products');
+        Schema::dropIfExists('prices');
     }
 };
