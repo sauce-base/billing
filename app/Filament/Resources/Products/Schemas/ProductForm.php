@@ -5,12 +5,14 @@ namespace Modules\Billing\Filament\Resources\Products\Schemas;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
+use Modules\Billing\Enums\BillingScheme;
 
 class ProductForm
 {
@@ -88,6 +90,78 @@ class ProductForm
                                     ->addActionLabel(__('Add Feature'))
                                     ->defaultItems(0)
                                     ->columnSpanFull(),
+                            ]),
+
+                        Section::make(__('Pricing'))
+                            ->description(__('Configure pricing options for this product.'))
+                            ->schema([
+                                Repeater::make('prices')
+                                    ->relationship()
+                                    ->label(__('Prices'))
+                                    ->schema([
+                                        Grid::make(3)->schema([
+                                            TextInput::make('amount')
+                                                ->label(__('Amount (cents)'))
+                                                ->numeric()
+                                                ->required()
+                                                ->minValue(0)
+                                                ->helperText(__('Enter price in cents (e.g., 900 = $9.00)')),
+
+                                            Select::make('currency')
+                                                ->label(__('Currency'))
+                                                ->options([
+                                                    'usd' => 'USD',
+                                                    'eur' => 'EUR',
+                                                    'gbp' => 'GBP',
+                                                ])
+                                                ->default('usd')
+                                                ->required(),
+
+                                            Select::make('billing_scheme')
+                                                ->label(__('Billing Scheme'))
+                                                ->options(BillingScheme::class)
+                                                ->default(BillingScheme::FlatAmount)
+                                                ->required(),
+                                        ]),
+
+                                        Grid::make(3)->schema([
+                                            Select::make('interval')
+                                                ->label(__('Billing Interval'))
+                                                ->options([
+                                                    'day' => __('Daily'),
+                                                    'week' => __('Weekly'),
+                                                    'month' => __('Monthly'),
+                                                    'year' => __('Yearly'),
+                                                ])
+                                                ->placeholder(__('One-time (no interval)')),
+
+                                            TextInput::make('interval_count')
+                                                ->label(__('Interval Count'))
+                                                ->numeric()
+                                                ->minValue(1)
+                                                ->default(1)
+                                                ->helperText(__('e.g., 3 for quarterly')),
+
+                                            Toggle::make('is_active')
+                                                ->label(__('Active'))
+                                                ->default(true)
+                                                ->onColor('success'),
+                                        ]),
+
+                                        TextInput::make('provider_price_id')
+                                            ->label(__('Provider Price ID'))
+                                            ->helperText(__('Stripe price ID (e.g., price_xxx)'))
+                                            ->maxLength(255)
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->addActionLabel(__('Add Price'))
+                                    ->defaultItems(0)
+                                    ->columnSpanFull()
+                                    ->collapsible()
+                                    ->itemLabel(fn (array $state): ?string => isset($state['amount'], $state['currency'])
+                                            ? '$'.number_format($state['amount'] / 100, 2).' '.strtoupper($state['currency']).($state['interval'] ? '/'.$state['interval'] : ' one-time')
+                                            : null
+                                    ),
                             ]),
 
                         Section::make(__('Metadata'))
