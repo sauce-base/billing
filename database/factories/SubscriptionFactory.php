@@ -2,54 +2,73 @@
 
 namespace Modules\Billing\Database\Factories;
 
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Modules\Billing\Enums\SubscriptionStatus;
+use Modules\Billing\Models\Customer;
+use Modules\Billing\Models\PaymentMethod;
+use Modules\Billing\Models\Price;
 use Modules\Billing\Models\Subscription;
-use Modules\Billing\Models\SubscriptionPlan;
-use Modules\Billing\Models\SubscriptionPlanPrice;
 
+/**
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\Modules\Billing\Models\Subscription>
+ */
 class SubscriptionFactory extends Factory
 {
     protected $model = Subscription::class;
 
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         return [
-            'user_id' => User::factory(),
-            'subscription_plan_id' => SubscriptionPlan::factory(),
-            'subscription_plan_price_id' => SubscriptionPlanPrice::factory(),
-            'provider' => 'stripe',
-            'provider_subscription_id' => 'sub_'.$this->faker->regexify('[A-Za-z0-9]{24}'),
-            'provider_metadata' => [
-                'customer_id' => 'cus_'.$this->faker->regexify('[A-Za-z0-9]{14}'),
-            ],
-            'status' => 'active',
-            'current_period_start' => now(),
-            'current_period_end' => now()->addMonth(),
-            'canceled_at' => null,
+            'customer_id' => Customer::factory(),
+            'price_id' => Price::factory(),
+            'payment_method_id' => PaymentMethod::factory(),
+            'provider_subscription_id' => 'sub_'.fake()->regexify('[A-Za-z0-9]{24}'),
+            'status' => SubscriptionStatus::Active,
+            'trial_starts_at' => null,
+            'trial_ends_at' => null,
+            'current_period_starts_at' => now(),
+            'current_period_ends_at' => now()->addMonth(),
+            'cancelled_at' => null,
             'ends_at' => null,
+            'metadata' => null,
         ];
     }
 
     /**
-     * Indicate that the subscription has been canceled but is still in grace period.
+     * Indicate that the subscription is on trial.
      */
-    public function canceled(): static
+    public function onTrial(): static
     {
         return $this->state(fn (array $attributes) => [
-            'canceled_at' => now(),
+            'trial_starts_at' => now(),
+            'trial_ends_at' => now()->addDays(14),
+        ]);
+    }
+
+    /**
+     * Indicate that the subscription is cancelled.
+     */
+    public function cancelled(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => SubscriptionStatus::Cancelled,
+            'cancelled_at' => now(),
             'ends_at' => now()->addMonth(),
         ]);
     }
 
     /**
-     * Indicate that the subscription is in grace period (canceled with future end date).
+     * Indicate that the subscription is past due.
      */
-    public function gracePeriod(): static
+    public function pastDue(): static
     {
         return $this->state(fn (array $attributes) => [
-            'canceled_at' => now()->subDays(5),
-            'ends_at' => now()->addDays(25),
+            'status' => SubscriptionStatus::PastDue,
         ]);
     }
 
@@ -59,9 +78,20 @@ class SubscriptionFactory extends Factory
     public function expired(): static
     {
         return $this->state(fn (array $attributes) => [
-            'canceled_at' => now()->subMonth(),
+            'status' => SubscriptionStatus::Cancelled,
+            'cancelled_at' => now()->subMonth(),
             'ends_at' => now()->subDay(),
-            'status' => 'canceled',
+            'current_period_ends_at' => now()->subDay(),
+        ]);
+    }
+
+    /**
+     * Indicate that the subscription is pending.
+     */
+    public function pending(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => SubscriptionStatus::Pending,
         ]);
     }
 }

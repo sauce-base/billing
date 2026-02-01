@@ -12,7 +12,8 @@ class BillingDatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            // SubscriptionPlanSeeder::class,
+            PaymentProviderSeeder::class,
+            ProductSeeder::class,
         ]);
     }
 }
