@@ -13,6 +13,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
 use Modules\Billing\Enums\BillingScheme;
+use Modules\Billing\Enums\Currency;
 
 class ProductForm
 {
@@ -109,18 +110,14 @@ class ProductForm
 
                                             Select::make('currency')
                                                 ->label(__('Currency'))
-                                                ->options([
-                                                    'usd' => 'USD',
-                                                    'eur' => 'EUR',
-                                                    'gbp' => 'GBP',
-                                                ])
-                                                ->default('usd')
+                                                ->options(Currency::class)
+                                                ->default(Currency::default())
                                                 ->required(),
 
                                             Select::make('billing_scheme')
                                                 ->label(__('Billing Scheme'))
                                                 ->options(BillingScheme::class)
-                                                ->default(BillingScheme::FlatAmount)
+                                                ->default(BillingScheme::FlatRate)
                                                 ->required(),
                                         ]),
 
@@ -159,7 +156,7 @@ class ProductForm
                                     ->columnSpanFull()
                                     ->collapsible()
                                     ->itemLabel(fn (array $state): ?string => isset($state['amount'], $state['currency'])
-                                            ? '$'.number_format($state['amount'] / 100, 2).' '.strtoupper($state['currency']).($state['interval'] ? '/'.$state['interval'] : ' one-time')
+                                            ? '$'.number_format($state['amount'] / 100, 2).' '.($state['currency'] instanceof Currency ? $state['currency']->value : $state['currency']).($state['interval'] ? '/'.$state['interval'] : ' one-time')
                                             : null
                                     ),
                             ]),

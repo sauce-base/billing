@@ -3,6 +3,7 @@
 namespace Modules\Billing\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Modules\Billing\Enums\Currency;
 use Modules\Billing\Enums\InvoiceStatus;
 use Modules\Billing\Models\Customer;
 use Modules\Billing\Models\Invoice;
@@ -27,7 +28,7 @@ class InvoiceFactory extends Factory
             'payment_id' => null,
             'provider_invoice_id' => 'in_'.fake()->regexify('[A-Za-z0-9]{24}'),
             'number' => 'INV-'.fake()->unique()->numerify('######'),
-            'currency' => 'usd',
+            'currency' => Currency::default(),
             'subtotal' => 999,
             'tax' => 0,
             'total' => 999,

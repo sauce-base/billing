@@ -3,6 +3,7 @@
 namespace Modules\Billing\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Modules\Billing\Enums\Currency;
 use Modules\Billing\Enums\PaymentStatus;
 use Modules\Billing\Models\Customer;
 use Modules\Billing\Models\Payment;
@@ -25,7 +26,7 @@ class PaymentFactory extends Factory
             'customer_id' => Customer::factory(),
             'subscription_id' => null,
             'provider_payment_id' => 'pi_'.fake()->regexify('[A-Za-z0-9]{24}'),
-            'currency' => 'usd',
+            'currency' => Currency::default(),
             'amount' => fake()->randomElement([999, 1999, 4999]),
             'amount_refunded' => 0,
             'status' => PaymentStatus::Succeeded,

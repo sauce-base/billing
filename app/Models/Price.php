@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\Billing\Enums\BillingScheme;
+use Modules\Billing\Enums\Currency;
 
 class Price extends Model
 {
@@ -31,6 +32,7 @@ class Price extends Model
         return [
             'amount' => 'integer',
             'interval_count' => 'integer',
+            'currency' => Currency::class,
             'billing_scheme' => BillingScheme::class,
             'metadata' => 'array',
             'is_active' => 'boolean',

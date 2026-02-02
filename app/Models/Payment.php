@@ -5,6 +5,7 @@ namespace Modules\Billing\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Billing\Enums\Currency;
 use Modules\Billing\Enums\PaymentStatus;
 
 class Payment extends Model
@@ -32,6 +33,7 @@ class Payment extends Model
         return [
             'amount' => 'integer',
             'amount_refunded' => 'integer',
+            'currency' => Currency::class,
             'status' => PaymentStatus::class,
             'metadata' => 'array',
         ];

@@ -4,6 +4,7 @@ namespace Modules\Billing\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Modules\Billing\Enums\BillingScheme;
+use Modules\Billing\Enums\Currency;
 use Modules\Billing\Models\Price;
 use Modules\Billing\Models\Product;
 
@@ -24,9 +25,9 @@ class PriceFactory extends Factory
         return [
             'product_id' => Product::factory(),
             'provider_price_id' => 'price_'.fake()->regexify('[A-Za-z0-9]{24}'),
-            'currency' => 'usd',
+            'currency' => Currency::default(),
             'amount' => fake()->randomElement([999, 1999, 4999]),
-            'billing_scheme' => BillingScheme::FlatAmount,
+            'billing_scheme' => BillingScheme::FlatRate,
             'interval' => 'month',
             'interval_count' => 1,
             'metadata' => null,

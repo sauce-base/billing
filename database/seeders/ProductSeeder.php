@@ -4,6 +4,7 @@ namespace Modules\Billing\Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Modules\Billing\Enums\BillingScheme;
+use Modules\Billing\Enums\Currency;
 use Modules\Billing\Models\Product;
 
 class ProductSeeder extends Seeder
@@ -37,18 +38,18 @@ class ProductSeeder extends Seeder
         $product->prices()->createMany([
             [
                 'provider_price_id' => 'price_free_monthly',
-                'currency' => 'usd',
+                'currency' => Currency::default(),
                 'amount' => 0,
-                'billing_scheme' => BillingScheme::FlatAmount,
+                'billing_scheme' => BillingScheme::FlatRate,
                 'interval' => 'month',
                 'interval_count' => 1,
                 'is_active' => true,
             ],
             [
                 'provider_price_id' => 'price_free_yearly',
-                'currency' => 'usd',
+                'currency' => Currency::default(),
                 'amount' => 0,
-                'billing_scheme' => BillingScheme::FlatAmount,
+                'billing_scheme' => BillingScheme::FlatRate,
                 'interval' => 'year',
                 'interval_count' => 1,
                 'is_active' => true,
@@ -78,18 +79,18 @@ class ProductSeeder extends Seeder
         $product->prices()->createMany([
             [
                 'provider_price_id' => 'price_basic_monthly',
-                'currency' => 'usd',
+                'currency' => Currency::default(),
                 'amount' => 900,
-                'billing_scheme' => BillingScheme::FlatAmount,
+                'billing_scheme' => BillingScheme::FlatRate,
                 'interval' => 'month',
                 'interval_count' => 1,
                 'is_active' => true,
             ],
             [
                 'provider_price_id' => 'price_basic_yearly',
-                'currency' => 'usd',
+                'currency' => Currency::default(),
                 'amount' => 9000,
-                'billing_scheme' => BillingScheme::FlatAmount,
+                'billing_scheme' => BillingScheme::FlatRate,
                 'interval' => 'year',
                 'interval_count' => 1,
                 'is_active' => true,
@@ -120,18 +121,18 @@ class ProductSeeder extends Seeder
         $product->prices()->createMany([
             [
                 'provider_price_id' => 'price_pro_monthly',
-                'currency' => 'usd',
+                'currency' => Currency::default(),
                 'amount' => 2900,
-                'billing_scheme' => BillingScheme::FlatAmount,
+                'billing_scheme' => BillingScheme::FlatRate,
                 'interval' => 'month',
                 'interval_count' => 1,
                 'is_active' => true,
             ],
             [
                 'provider_price_id' => 'price_pro_yearly',
-                'currency' => 'usd',
+                'currency' => Currency::default(),
                 'amount' => 29000,
-                'billing_scheme' => BillingScheme::FlatAmount,
+                'billing_scheme' => BillingScheme::FlatRate,
                 'interval' => 'year',
                 'interval_count' => 1,
                 'is_active' => true,
@@ -163,18 +164,18 @@ class ProductSeeder extends Seeder
         $product->prices()->createMany([
             [
                 'provider_price_id' => 'price_enterprise_monthly',
-                'currency' => 'usd',
+                'currency' => Currency::default(),
                 'amount' => 9900,
-                'billing_scheme' => BillingScheme::FlatAmount,
+                'billing_scheme' => BillingScheme::FlatRate,
                 'interval' => 'month',
                 'interval_count' => 1,
                 'is_active' => true,
             ],
             [
                 'provider_price_id' => 'price_enterprise_yearly',
-                'currency' => 'usd',
+                'currency' => Currency::default(),
                 'amount' => 99000,
-                'billing_scheme' => BillingScheme::FlatAmount,
+                'billing_scheme' => BillingScheme::FlatRate,
                 'interval' => 'year',
                 'interval_count' => 1,
                 'is_active' => true,

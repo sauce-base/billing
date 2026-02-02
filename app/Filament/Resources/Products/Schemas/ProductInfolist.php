@@ -65,7 +65,7 @@ class ProductInfolist
                                         TextEntry::make('formatted_price')
                                             ->label(__('Price'))
                                             ->state(fn ($record) => '$'.number_format($record->amount / 100, 2).' '.
-                                                strtoupper($record->currency).
+                                                $record->currency->value.
                                                 ($record->interval ? '/'.$record->interval : ' (one-time)')
                                             )
                                             ->columnSpan(5),
