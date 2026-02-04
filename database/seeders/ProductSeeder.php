@@ -33,6 +33,9 @@ class ProductSeeder extends Seeder
                 '500MB storage',
                 'Community support',
             ],
+            'metadata' => [
+                'tagline' => 'For hobbyists',
+            ],
         ]);
 
         $product->prices()->createMany([
@@ -74,6 +77,9 @@ class ProductSeeder extends Seeder
                 'Email support',
                 'Basic analytics',
             ],
+            'metadata' => [
+                'tagline' => 'For individuals',
+            ],
         ]);
 
         $product->prices()->createMany([
@@ -94,6 +100,11 @@ class ProductSeeder extends Seeder
                 'interval' => 'year',
                 'interval_count' => 1,
                 'is_active' => true,
+                'metadata' => [
+                    'badge' => 'Save 17%',
+                    'label' => 'Billed annually',
+                    'original_price' => '10800',
+                ],
             ],
         ]);
     }
@@ -116,6 +127,10 @@ class ProductSeeder extends Seeder
                 'Advanced analytics',
                 'API access',
             ],
+            'metadata' => [
+                'badge' => 'Recommended',
+                'tagline' => 'For growing teams',
+            ],
         ]);
 
         $product->prices()->createMany([
@@ -136,6 +151,11 @@ class ProductSeeder extends Seeder
                 'interval' => 'year',
                 'interval_count' => 1,
                 'is_active' => true,
+                'metadata' => [
+                    'badge' => 'Save 17%',
+                    'label' => 'Billed annually',
+                    'original_price' => '34800',
+                ],
             ],
         ]);
     }
@@ -159,6 +179,11 @@ class ProductSeeder extends Seeder
                 'SLA',
                 'SSO',
             ],
+            'metadata' => [
+                'tagline' => 'For large organizations',
+                'cta_label' => 'Contact Sales',
+                'cta_url' => 'mailto:sales@saucebase.dev',
+            ],
         ]);
 
         $product->prices()->createMany([
@@ -179,6 +204,11 @@ class ProductSeeder extends Seeder
                 'interval' => 'year',
                 'interval_count' => 1,
                 'is_active' => true,
+                'metadata' => [
+                    'badge' => 'Save 17%',
+                    'label' => 'Billed annually',
+                    'original_price' => '118800',
+                ],
             ],
         ]);
     }

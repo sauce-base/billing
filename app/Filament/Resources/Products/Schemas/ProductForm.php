@@ -150,6 +150,14 @@ class ProductForm
                                             ->helperText(__('Stripe price ID (e.g., price_xxx)'))
                                             ->maxLength(255)
                                             ->columnSpanFull(),
+
+                                        KeyValue::make('metadata')
+                                            ->label(__('Price Metadata'))
+                                            ->keyLabel(__('Key'))
+                                            ->valueLabel(__('Value'))
+                                            ->addActionLabel(__('Add'))
+                                            ->helperText(__('Add custom data like badge text or labels (e.g., badge: "Save 20%", label: "Billed annually")'))
+                                            ->columnSpanFull(),
                                     ])
                                     ->addActionLabel(__('Add Price'))
                                     ->defaultItems(0)
@@ -186,8 +194,11 @@ class ProductForm
                                 Text::make(__('Features'))
                                     ->content(__('List the key features or benefits of this product. These will be displayed as bullet points to help customers understand what they get (e.g., "Unlimited storage", "24/7 support", "Advanced analytics").')),
 
-                                Text::make(__('Metadata'))
-                                    ->content(__('Add custom key-value pairs for any additional information (e.g., trial_days: 14, max_users: 100). This data can be used for custom integrations.')),
+                                Text::make(__('Product Metadata'))
+                                    ->content(__('Product metadata keys: "badge" (highlighted badge on card, e.g., "Recommended"), "tagline" (italic text below description), "cta_label" (custom button text), "cta_url" (custom button link, e.g., "mailto:sales@example.com").')),
+
+                                Text::make(__('Price Metadata'))
+                                    ->content(__('Price metadata keys: "badge" (displays next to price, e.g., "Save 20%"), "label" (text below price, e.g., "Billed annually"), "original_price" (shows strikethrough price in cents, e.g., "10800" for $108.00).')),
                             ])
                             ->icon('heroicon-o-information-circle')
                             ->iconColor('primary'),
