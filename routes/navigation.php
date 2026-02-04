@@ -22,3 +22,15 @@ Navigation::add('Billing', route('billing.index'), function (Section $section) {
         ],
     ]);
 });
+
+/**
+ * Landing Page Navigation
+ */
+Navigation::add('Pricing', '/#pricing', function (Section $section) {
+    $section->attributes([
+        'group' => 'landing',
+        'slug' => 'pricing',
+        'external' => true,
+        'order' => 1,
+    ]);
+});
