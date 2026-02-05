@@ -29,7 +29,7 @@ watch(priceKey, () => {
         class="relative flex h-full flex-col rounded-3xl p-8 shadow-lg"
         :class="
             product.metadata?.badge || product.is_highlighted
-                ? 'ring-primary bg-white shadow-lg ring-3 dark:bg-gray-900 scale-[1.05]'
+                ? 'ring-primary bg-white/70 shadow-lg ring-3 dark:bg-gray-900/70 scale-[1.05]'
                 : 'bg-white/70  dark:bg-gray-900/60 dark:ring-white/10'
         "
     >
