@@ -87,6 +87,17 @@ class Product extends Model
     }
 
     /**
+     * Scope a query to only include displayable products with active prices.
+     */
+    #[Scope]
+    protected function displayable(Builder $query): void
+    {
+        $query->active()
+            ->visible()
+            ->with(['prices' => fn (HasMany $query) => $query->where('is_active', true)]);
+    }
+
+    /**
      * @return HasMany<Price, $this>
      */
     public function prices(): HasMany
