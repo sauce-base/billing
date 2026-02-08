@@ -3,6 +3,7 @@
 namespace Modules\Billing\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 use Modules\Billing\Enums\CheckoutSessionStatus;
 use Modules\Billing\Models\CheckoutSession;
 use Modules\Billing\Models\Customer;
@@ -23,6 +24,7 @@ class CheckoutSessionFactory extends Factory
     public function definition(): array
     {
         return [
+            'uuid' => (string) Str::uuid(),
             'customer_id' => Customer::factory(),
             'price_id' => Price::factory(),
             'payment_method_id' => null,

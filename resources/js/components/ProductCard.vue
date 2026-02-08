@@ -1,19 +1,34 @@
 <script setup lang="ts">
+import { router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-import type { Product } from '@modules/Billing/resources/js/types';
+import type { Price, Product } from '@modules/Billing/resources/js/types';
 import { getIntervalDisplay } from '../utils/intervals';
 
 const props = defineProps<{
     product: Product;
+    price: Price;
 }>();
+
+function handleGetStarted() {
+    if (!props.price) return;
+
+    if (props.price.amount === 0) {
+        router.visit(route('register'));
+        return;
+    }
+
+    router.post(route('billing.checkout.create'), {
+        price_id: props.price.id,
+    });
+}
 
 function formatPrice(amount: number | string): string {
     const cents = typeof amount === 'string' ? parseFloat(amount) : amount;
     return `$${Math.round(cents / 100)}`;
 }
 
-const priceKey = computed(() => props.product.prices[0]?.amount);
+const priceKey = computed(() => props.price?.amount);
 const isAnimating = ref(false);
 
 watch(priceKey, () => {
@@ -29,8 +44,8 @@ watch(priceKey, () => {
         class="relative flex h-full flex-col rounded-3xl p-8 shadow-lg"
         :class="
             product.metadata?.badge || product.is_highlighted
-                ? 'ring-primary bg-white/70 shadow-lg ring-3 dark:bg-gray-900/70 scale-[1.05]'
-                : 'bg-white/70  dark:bg-gray-900/60 dark:ring-white/10'
+                ? 'ring-primary scale-[1.05] bg-white/70 shadow-lg ring-3 dark:bg-gray-900/70'
+                : 'bg-white/70 dark:bg-gray-900/60 dark:ring-white/10'
         "
     >
         <span
@@ -65,23 +80,20 @@ watch(priceKey, () => {
         <div class="mt-2">
             <!-- Original price + discount badge -->
             <div
-                v-if="
-                    product.prices[0]?.metadata?.original_price ||
-                    product.prices[0]?.metadata?.badge
-                "
+                v-if="price?.metadata?.original_price || price?.metadata?.badge"
                 class="mb-1 flex items-center gap-2"
             >
                 <span
-                    v-if="product.prices[0]?.metadata?.original_price"
+                    v-if="price?.metadata?.original_price"
                     class="text-2xl text-gray-400 line-through dark:text-gray-600"
                 >
-                    {{ formatPrice(product.prices[0].metadata.original_price) }}
+                    {{ formatPrice(price.metadata.original_price) }}
                 </span>
                 <span
-                    v-if="product.prices[0]?.metadata?.badge"
+                    v-if="price?.metadata?.badge"
                     class="text-sm font-medium text-green-600 dark:text-green-400"
                 >
-                    {{ product.prices[0].metadata.badge }}
+                    {{ price.metadata.badge }}
                 </span>
             </div>
             <div v-else>&nbsp;</div>
@@ -91,14 +103,14 @@ watch(priceKey, () => {
                 class="flex items-baseline gap-x-1 transition-transform duration-150"
                 :class="{ 'scale-105': isAnimating }"
             >
-                <template v-if="product.prices.length > 0">
+                <template v-if="price">
                     <span
                         class="text-5xl font-semibold tracking-tight text-gray-900 dark:text-white"
                     >
-                        {{ formatPrice(product.prices[0].amount) }}
+                        {{ formatPrice(price.amount) }}
                     </span>
                     <span class="text-base text-gray-500 dark:text-gray-400">
-                        {{ getIntervalDisplay(product.prices[0].interval) }}
+                        {{ getIntervalDisplay(price.interval) }}
                     </span>
                 </template>
                 <span
@@ -122,7 +134,7 @@ watch(priceKey, () => {
         <a
             v-if="product.metadata?.cta_url"
             :href="product.metadata.cta_url"
-            class="mt-8 block w-full rounded-full px-4 py-3 text-center font-semibold shadow-2xl transition-all duration-200 hover:scale-105 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2"
+            class="mt-8 block w-full cursor-pointer rounded-full px-4 py-3 text-center font-semibold shadow-2xl transition-all duration-200 hover:scale-105 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2"
             :class="
                 product.metadata?.badge || product.is_highlighted
                     ? 'bg-primary hover:bg-primary/90 focus-visible:outline-primary text-white'
@@ -133,18 +145,22 @@ watch(priceKey, () => {
         </a>
         <button
             v-else
-            class="mt-8 w-full rounded-full px-4 py-3 font-semibold shadow-lg transition-all duration-200 hover:scale-105 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2"
+            class="mt-8 w-full cursor-pointer rounded-full px-4 py-3 font-semibold shadow-lg transition-all duration-200 hover:scale-105 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2"
             :class="
                 product.metadata?.badge || product.is_highlighted
                     ? 'bg-primary hover:bg-primary/90 focus-visible:outline-primary text-white'
                     : 'text-gray-900 ring-1 ring-gray-200 ring-inset hover:ring-gray-300 dark:bg-white/10 dark:text-white dark:ring-white/10 dark:hover:bg-white/20'
             "
+            @click="handleGetStarted"
         >
             {{ $t('Get started') }}
         </button>
 
         <!-- After CTA text from metadata -->
-        <div class="text-center text-gray-500 dark:text-gray-400/90 mt-2 text-sm" v-if="product.metadata?.after_cta">
+        <div
+            class="mt-2 text-center text-sm text-gray-500 dark:text-gray-400/90"
+            v-if="product.metadata?.after_cta"
+        >
             {{ $t(product.metadata.after_cta) }}
         </div>
 

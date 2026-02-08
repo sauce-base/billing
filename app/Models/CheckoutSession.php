@@ -5,6 +5,7 @@ namespace Modules\Billing\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 use Modules\Billing\Enums\CheckoutSessionStatus;
 
 class CheckoutSession extends Model
@@ -12,6 +13,7 @@ class CheckoutSession extends Model
     use HasFactory;
 
     protected $fillable = [
+        'uuid',
         'customer_id',
         'price_id',
         'payment_method_id',
@@ -22,6 +24,20 @@ class CheckoutSession extends Model
         'metadata',
         'expires_at',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (CheckoutSession $session) {
+            if (! $session->uuid) {
+                $session->uuid = (string) Str::uuid();
+            }
+        });
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'uuid';
+    }
 
     /**
      * @return array<string, string>

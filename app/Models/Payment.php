@@ -15,6 +15,7 @@ class Payment extends Model
     protected $fillable = [
         'customer_id',
         'subscription_id',
+        'price_id',
         'provider_payment_id',
         'currency',
         'amount',
@@ -53,5 +54,13 @@ class Payment extends Model
     public function subscription(): BelongsTo
     {
         return $this->belongsTo(Subscription::class);
+    }
+
+    /**
+     * @return BelongsTo<Price, $this>
+     */
+    public function price(): BelongsTo
+    {
+        return $this->belongsTo(Price::class);
     }
 }

@@ -25,6 +25,7 @@ class PaymentFactory extends Factory
         return [
             'customer_id' => Customer::factory(),
             'subscription_id' => null,
+            'price_id' => null,
             'provider_payment_id' => 'pi_'.fake()->regexify('[A-Za-z0-9]{24}'),
             'currency' => Currency::default(),
             'amount' => fake()->randomElement([999, 1999, 4999]),

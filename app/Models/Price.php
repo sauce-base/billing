@@ -14,6 +14,7 @@ class Price extends Model
 
     protected $fillable = [
         'product_id',
+        'payment_provider_id',
         'provider_price_id',
         'currency',
         'amount',
@@ -45,5 +46,13 @@ class Price extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * @return BelongsTo<PaymentProvider, $this>
+     */
+    public function paymentProvider(): BelongsTo
+    {
+        return $this->belongsTo(PaymentProvider::class);
     }
 }

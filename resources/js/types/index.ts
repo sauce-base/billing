@@ -33,3 +33,11 @@ export interface Product {
     prices: Price[];
     metadata?: ProductMetadata;
 }
+
+export interface CheckoutSession {
+    id: number;
+    uuid: string;
+    price: Price & { product: Product };
+    status: string;
+    expires_at: string | null;
+}

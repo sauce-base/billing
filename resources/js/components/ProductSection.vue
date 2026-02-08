@@ -88,7 +88,7 @@ function getToggleLabel(interval: string): string {
         <!-- Billing Toggle -->
         <div
             v-if="availableIntervals.length > 1"
-            class="my-16 flex justify-center"
+            class="mt-16 flex justify-center"
         >
             <div
                 class="relative flex items-center rounded-full bg-gray-100 p-1 shadow-lg dark:bg-white/5"
@@ -111,7 +111,7 @@ function getToggleLabel(interval: string): string {
 
         <!-- Pricing Cards -->
         <div
-            class="mx-auto grid max-w-6xl grid-cols-1 gap-8"
+            class="mx-auto mt-16 grid max-w-6xl grid-cols-1 gap-8"
             :class="{
                 'lg:grid-cols-2': filteredProducts.length === 2,
                 'lg:grid-cols-3': filteredProducts.length === 3,
@@ -122,6 +122,7 @@ function getToggleLabel(interval: string): string {
                 v-for="product in filteredProducts"
                 :key="product.id"
                 :product="product"
+                :price="product.prices[0]"
             />
         </div>
         <div class="absolute top-30 -z-10 h-2/3 w-full opacity-50">

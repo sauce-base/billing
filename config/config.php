@@ -1,5 +1,7 @@
 <?php
 
+use Modules\Billing\Enums\Currency;
+
 return [
     'name' => 'Billing',
 
@@ -9,10 +11,10 @@ return [
     |--------------------------------------------------------------------------
     |
     | The default currency for billing operations.
-    | Uses ISO 4217 currency codes (e.g., USD, EUR, BRL).
+    | Uses ISO 4217 currency codes (e.g., EUR, BRL, USD,...).
     |
     */
-    'default_currency' => env('BILLING_DEFAULT_CURRENCY', 'USD'),
+    'default_currency' => env('BILLING_DEFAULT_CURRENCY', 'EUR'),
 
     /*
     |--------------------------------------------------------------------------
