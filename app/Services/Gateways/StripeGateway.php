@@ -1,0 +1,117 @@
+<?php
+
+namespace Modules\Billing\Services\Gateways;
+
+use Illuminate\Http\Request;
+use Modules\Billing\Contracts\PaymentGatewayInterface;
+use Modules\Billing\Data\CheckoutData;
+use Modules\Billing\Data\CheckoutResultData;
+use Modules\Billing\Data\WebhookData;
+use Modules\Billing\Enums\WebhookEventType;
+use Modules\Billing\Models\Customer;
+use Modules\Billing\Models\Subscription;
+use Stripe\Exception\SignatureVerificationException;
+use Stripe\StripeClient;
+use Stripe\Webhook;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+
+class StripeGateway implements PaymentGatewayInterface
+{
+    private const array EVENT_MAP = [
+        'checkout.session.completed' => WebhookEventType::CheckoutCompleted,
+        'customer.subscription.updated' => WebhookEventType::SubscriptionUpdated,
+        'customer.subscription.deleted' => WebhookEventType::SubscriptionDeleted,
+        'invoice.payment_succeeded' => WebhookEventType::PaymentSucceeded,
+        'invoice.payment_failed' => WebhookEventType::PaymentFailed,
+        'invoice.paid' => WebhookEventType::InvoicePaid,
+    ];
+
+    public function __construct(
+        private StripeClient $stripe,
+    ) {}
+
+    public function createCustomer(string $name, string $email): string
+    {
+        $customer = $this->stripe->customers->create([
+            'name' => $name,
+            'email' => $email,
+        ]);
+
+        return $customer->id;
+    }
+
+    public function createCheckoutSession(CheckoutData $data): CheckoutResultData
+    {
+        $isRecurring = $data->price->interval !== null;
+
+        $params = [
+            'customer' => $data->customer->provider_customer_id,
+            'mode' => $isRecurring ? 'subscription' : 'payment',
+            'line_items' => [
+                [
+                    'price' => $data->price->provider_price_id,
+                    'quantity' => 1,
+                ],
+            ],
+            'success_url' => $data->successUrl,
+            'cancel_url' => $data->cancelUrl,
+        ];
+
+        if ($data->coupon) {
+            $params['discounts'] = [['coupon' => $data->coupon]];
+        }
+
+        $session = $this->stripe->checkout->sessions->create($params);
+
+        return new CheckoutResultData(
+            sessionId: $session->id,
+            url: $session->url,
+            provider: 'stripe',
+        );
+    }
+
+    public function cancelSubscription(Subscription $subscription, bool $immediately = false): void
+    {
+        if ($immediately) {
+            $this->stripe->subscriptions->cancel($subscription->provider_subscription_id);
+        } else {
+            $this->stripe->subscriptions->update($subscription->provider_subscription_id, [
+                'cancel_at_period_end' => true,
+            ]);
+        }
+    }
+
+    public function getManagementUrl(Customer $customer): string
+    {
+        $session = $this->stripe->billingPortal->sessions->create([
+            'customer' => $customer->provider_customer_id,
+            'return_url' => route('billing.index'),
+        ]);
+
+        return $session->url;
+    }
+
+    public function verifyAndParseWebhook(Request $request): WebhookData
+    {
+        $webhookSecret = config('services.stripe.webhook_secret');
+
+        try {
+            $event = Webhook::constructEvent(
+                $request->getContent(),
+                $request->header('Stripe-Signature', ''),
+                $webhookSecret,
+            );
+        } catch (SignatureVerificationException $e) {
+            throw new HttpException(400, 'Invalid webhook signature: '.$e->getMessage());
+        }
+
+        $normalizedType = self::EVENT_MAP[$event->type] ?? null;
+
+        return new WebhookData(
+            type: $normalizedType,
+            provider: 'stripe',
+            providerEventId: $event->id,
+            payload: $event->data->object->toArray(),
+        );
+    }
+}

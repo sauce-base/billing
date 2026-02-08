@@ -16,10 +16,11 @@ return new class extends Migration
     {
         Schema::create('checkout_sessions', function (Blueprint $table) {
             $table->id();
+            $table->uuid('uuid')->unique();
 
             // Foreign keys
             $table->foreignIdFor(Customer::class)->nullable()->constrained()->nullOnDelete();
-            $table->foreignIdFor(Price::class)->nullable()->constrained()->nullOnDelete();
+            $table->foreignIdFor(Price::class)->constrained()->cascadeOnDelete();
             $table->foreignIdFor(PaymentMethod::class)->nullable()->constrained()->nullOnDelete();
 
             // Provider identifiers

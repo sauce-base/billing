@@ -5,6 +5,7 @@ namespace Modules\Billing\Providers;
 use App\Providers\ModuleServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
+use Modules\Billing\Services\BillingService;
 use Modules\Billing\Services\Gateways\StripeGateway;
 use Modules\Billing\Services\PaymentGatewayFactory;
 use Stripe\StripeClient;
@@ -44,6 +45,9 @@ class BillingServiceProvider extends ModuleServiceProvider
             return $app->make(PaymentGatewayFactory::class)
                 ->driver(config('billing.default_gateway'));
         });
+
+        // Register BillingService as singleton
+        $this->app->singleton(BillingService::class);
     }
 
     public function boot(): void

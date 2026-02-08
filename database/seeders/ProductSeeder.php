@@ -5,16 +5,20 @@ namespace Modules\Billing\Database\Seeders;
 use Illuminate\Database\Seeder;
 use Modules\Billing\Enums\BillingScheme;
 use Modules\Billing\Enums\Currency;
+use Modules\Billing\Models\PaymentProvider;
 use Modules\Billing\Models\Product;
 
 class ProductSeeder extends Seeder
 {
+    private ?int $stripeProviderId = null;
+
     public function run(): void
     {
+        $this->stripeProviderId = PaymentProvider::where('slug', 'stripe')->value('id');
+
         $this->createFreeProduct();
-        $this->createBasicProduct();
         $this->createProProduct();
-        $this->createEnterpriseProduct();
+        $this->createTeamProduct();
     }
 
     private function createFreeProduct(): void
@@ -40,6 +44,7 @@ class ProductSeeder extends Seeder
 
         $product->prices()->createMany([
             [
+                'payment_provider_id' => $this->stripeProviderId,
                 'provider_price_id' => 'price_free_monthly',
                 'currency' => Currency::default(),
                 'amount' => 0,
@@ -49,6 +54,7 @@ class ProductSeeder extends Seeder
                 'is_active' => true,
             ],
             [
+                'payment_provider_id' => $this->stripeProviderId,
                 'provider_price_id' => 'price_free_yearly',
                 'currency' => Currency::default(),
                 'amount' => 0,
@@ -60,82 +66,35 @@ class ProductSeeder extends Seeder
         ]);
     }
 
-    private function createBasicProduct(): void
-    {
-        $product = Product::create([
-            'sku' => 'basic',
-            'slug' => 'basic',
-            'name' => 'Basic',
-            'description' => 'Perfect for individuals and small teams',
-            'display_order' => 2,
-            'is_visible' => true,
-            'is_highlighted' => false,
-            'is_active' => true,
-            'features' => [
-                '10 projects',
-                '10GB storage',
-                'Email support',
-                'Basic analytics',
-            ],
-            'metadata' => [
-                'tagline' => 'For individuals',
-            ],
-        ]);
-
-        $product->prices()->createMany([
-            [
-                'provider_price_id' => 'price_basic_monthly',
-                'currency' => Currency::default(),
-                'amount' => 900,
-                'billing_scheme' => BillingScheme::FlatRate,
-                'interval' => 'month',
-                'interval_count' => 1,
-                'is_active' => true,
-            ],
-            [
-                'provider_price_id' => 'price_basic_yearly',
-                'currency' => Currency::default(),
-                'amount' => 9000,
-                'billing_scheme' => BillingScheme::FlatRate,
-                'interval' => 'year',
-                'interval_count' => 1,
-                'is_active' => true,
-                'metadata' => [
-                    'badge' => 'Save 17%',
-                    'label' => 'Billed annually',
-                    'original_price' => '10800',
-                ],
-            ],
-        ]);
-    }
-
     private function createProProduct(): void
     {
         $product = Product::create([
             'sku' => 'pro',
             'slug' => 'pro',
             'name' => 'Pro',
-            'description' => 'For growing teams and businesses',
+            'description' => 'Everything you need to work independently',
             'display_order' => 3,
             'is_visible' => true,
             'is_highlighted' => true,
             'is_active' => true,
             'features' => [
                 'Unlimited projects',
-                '100GB storage',
-                'Priority support',
+                '50GB storage',
+                'Priority email support',
                 'Advanced analytics',
                 'API access',
+                'Custom domains',
             ],
             'metadata' => [
-                'badge' => 'Recommended',
-                'tagline' => 'For growing teams',
+                'badge' => 'Most Popular',
+                'tagline' => 'For professionals',
             ],
         ]);
 
         $product->prices()->createMany([
             [
-                'provider_price_id' => 'price_pro_monthly',
+                'payment_provider_id' => $this->stripeProviderId,
+                'provider_price_id' => 'price_1SyadREx2sHJcHgwCt0ReZEJ',
                 'currency' => Currency::default(),
                 'amount' => 2900,
                 'billing_scheme' => BillingScheme::FlatRate,
@@ -144,7 +103,8 @@ class ProductSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'provider_price_id' => 'price_pro_yearly',
+                'payment_provider_id' => $this->stripeProviderId,
+                'provider_price_id' => 'price_1SyaCQEx2sHJcHgwEC9VmwSZ',
                 'currency' => Currency::default(),
                 'amount' => 29000,
                 'billing_scheme' => BillingScheme::FlatRate,
@@ -157,49 +117,60 @@ class ProductSeeder extends Seeder
                     'original_price' => '34800',
                 ],
             ],
+            [
+                'payment_provider_id' => $this->stripeProviderId,
+                'provider_price_id' => 'price_1SyaajEx2sHJcHgwMC3qb0c6',
+                'currency' => Currency::default(),
+                'amount' => 29900,
+                'billing_scheme' => BillingScheme::FlatRate,
+                'interval' => null,
+                'interval_count' => null,
+                'is_active' => false,
+            ],
         ]);
     }
 
-    private function createEnterpriseProduct(): void
+    private function createTeamProduct(): void
     {
         $product = Product::create([
-            'sku' => 'enterprise',
-            'slug' => 'enterprise',
-            'name' => 'Enterprise',
-            'description' => 'For large organizations with advanced needs',
+            'sku' => 'team',
+            'slug' => 'team',
+            'name' => 'Team',
+            'description' => 'Collaborate with your team, up to 25 members',
             'display_order' => 4,
             'is_visible' => true,
             'is_highlighted' => false,
             'is_active' => true,
             'features' => [
-                'Unlimited everything',
-                '1TB storage',
-                'Dedicated support',
-                'Custom integrations',
-                'SLA',
-                'SSO',
+                'Everything in Pro',
+                'Up to 25 team members',
+                '200GB shared storage',
+                'Team roles & permissions',
+                'Priority support',
+                'Shared dashboards',
+                'Audit logs',
             ],
             'metadata' => [
-                'tagline' => 'For large organizations',
-                'cta_label' => 'Contact Sales',
-                'cta_url' => 'mailto:sales@saucebase.dev',
+                'tagline' => 'For teams',
             ],
         ]);
 
         $product->prices()->createMany([
             [
-                'provider_price_id' => 'price_enterprise_monthly',
+                'payment_provider_id' => $this->stripeProviderId,
+                'provider_price_id' => 'price_1SyaL0Ex2sHJcHgwWaaTGLgo',
                 'currency' => Currency::default(),
-                'amount' => 9900,
+                'amount' => 7900,
                 'billing_scheme' => BillingScheme::FlatRate,
                 'interval' => 'month',
                 'interval_count' => 1,
                 'is_active' => true,
             ],
             [
-                'provider_price_id' => 'price_enterprise_yearly',
+                'payment_provider_id' => $this->stripeProviderId,
+                'provider_price_id' => 'price_1SyaLWEx2sHJcHgw3fQdYV0J',
                 'currency' => Currency::default(),
-                'amount' => 99000,
+                'amount' => 79000,
                 'billing_scheme' => BillingScheme::FlatRate,
                 'interval' => 'year',
                 'interval_count' => 1,
@@ -207,8 +178,18 @@ class ProductSeeder extends Seeder
                 'metadata' => [
                     'badge' => 'Save 17%',
                     'label' => 'Billed annually',
-                    'original_price' => '118800',
+                    'original_price' => '94800',
                 ],
+            ],
+            [
+                'payment_provider_id' => $this->stripeProviderId,
+                'provider_price_id' => 'price_1SyaXDEx2sHJcHgwt74dHzHh',
+                'currency' => Currency::default(),
+                'amount' => 79900,
+                'billing_scheme' => BillingScheme::FlatRate,
+                'interval' => null,
+                'interval_count' => null,
+                'is_active' => false,
             ],
         ]);
     }
