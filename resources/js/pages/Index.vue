@@ -109,9 +109,7 @@ const title = 'Billing';
                     </div>
 
                     <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div
-                            v-if="subscription.current_period_ends_at"
-                        >
+                        <div v-if="subscription.current_period_ends_at">
                             <p
                                 class="text-sm font-medium text-gray-500 dark:text-gray-400"
                             >
