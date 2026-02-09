@@ -24,7 +24,7 @@ use Modules\Billing\Models\Customer;
 use Modules\Billing\Models\Price;
 use Modules\Billing\Models\Subscription;
 use Modules\Billing\Services\BillingService;
-use Modules\Billing\Services\PaymentGatewayFactory;
+use Modules\Billing\Services\PaymentGatewayManager;
 use Tests\TestCase;
 
 class BillingServiceTest extends TestCase
@@ -41,7 +41,10 @@ class BillingServiceTest extends TestCase
         parent::setUp();
 
         $this->gateway = $this->createMock(PaymentGatewayInterface::class);
-        $this->app->instance(PaymentGatewayInterface::class, $this->gateway);
+
+        $manager = $this->createMock(PaymentGatewayManager::class);
+        $manager->method('driver')->willReturn($this->gateway);
+        $this->app->instance(PaymentGatewayManager::class, $manager);
 
         $this->billingService = $this->app->make(BillingService::class);
     }
@@ -211,15 +214,9 @@ class BillingServiceTest extends TestCase
             ],
         );
 
-        $mockGateway = $this->createMock(PaymentGatewayInterface::class);
-        $mockGateway->method('verifyAndParseWebhook')->willReturn($webhook);
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
 
-        $factory = $this->createMock(PaymentGatewayFactory::class);
-        $factory->method('driver')->willReturn($mockGateway);
-        $this->app->instance(PaymentGatewayFactory::class, $factory);
-
-        $billingService = $this->app->make(BillingService::class);
-        $billingService->handleWebhook('stripe', request());
+        $this->billingService->handleWebhook('stripe', request());
 
         $session->refresh();
         $this->assertEquals(CheckoutSessionStatus::Completed, $session->status);
@@ -253,15 +250,9 @@ class BillingServiceTest extends TestCase
             ],
         );
 
-        $mockGateway = $this->createMock(PaymentGatewayInterface::class);
-        $mockGateway->method('verifyAndParseWebhook')->willReturn($webhook);
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
 
-        $factory = $this->createMock(PaymentGatewayFactory::class);
-        $factory->method('driver')->willReturn($mockGateway);
-        $this->app->instance(PaymentGatewayFactory::class, $factory);
-
-        $billingService = $this->app->make(BillingService::class);
-        $billingService->handleWebhook('stripe', request());
+        $this->billingService->handleWebhook('stripe', request());
 
         $session->refresh();
         $this->assertEquals(CheckoutSessionStatus::Completed, $session->status);
@@ -299,15 +290,9 @@ class BillingServiceTest extends TestCase
             ],
         );
 
-        $mockGateway = $this->createMock(PaymentGatewayInterface::class);
-        $mockGateway->method('verifyAndParseWebhook')->willReturn($webhook);
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
 
-        $factory = $this->createMock(PaymentGatewayFactory::class);
-        $factory->method('driver')->willReturn($mockGateway);
-        $this->app->instance(PaymentGatewayFactory::class, $factory);
-
-        $billingService = $this->app->make(BillingService::class);
-        $billingService->handleWebhook('stripe', request());
+        $this->billingService->handleWebhook('stripe', request());
 
         $subscription->refresh();
         $this->assertEquals(SubscriptionStatus::PastDue, $subscription->status);
@@ -333,15 +318,9 @@ class BillingServiceTest extends TestCase
             ],
         );
 
-        $mockGateway = $this->createMock(PaymentGatewayInterface::class);
-        $mockGateway->method('verifyAndParseWebhook')->willReturn($webhook);
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
 
-        $factory = $this->createMock(PaymentGatewayFactory::class);
-        $factory->method('driver')->willReturn($mockGateway);
-        $this->app->instance(PaymentGatewayFactory::class, $factory);
-
-        $billingService = $this->app->make(BillingService::class);
-        $billingService->handleWebhook('stripe', request());
+        $this->billingService->handleWebhook('stripe', request());
 
         $subscription->refresh();
         $this->assertEquals(SubscriptionStatus::Cancelled, $subscription->status);
@@ -376,15 +355,9 @@ class BillingServiceTest extends TestCase
             ],
         );
 
-        $mockGateway = $this->createMock(PaymentGatewayInterface::class);
-        $mockGateway->method('verifyAndParseWebhook')->willReturn($webhook);
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
 
-        $factory = $this->createMock(PaymentGatewayFactory::class);
-        $factory->method('driver')->willReturn($mockGateway);
-        $this->app->instance(PaymentGatewayFactory::class, $factory);
-
-        $billingService = $this->app->make(BillingService::class);
-        $billingService->handleWebhook('stripe', request());
+        $this->billingService->handleWebhook('stripe', request());
 
         $this->assertDatabaseHas('payments', [
             'customer_id' => $customer->id,
@@ -424,15 +397,9 @@ class BillingServiceTest extends TestCase
             ],
         );
 
-        $mockGateway = $this->createMock(PaymentGatewayInterface::class);
-        $mockGateway->method('verifyAndParseWebhook')->willReturn($webhook);
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
 
-        $factory = $this->createMock(PaymentGatewayFactory::class);
-        $factory->method('driver')->willReturn($mockGateway);
-        $this->app->instance(PaymentGatewayFactory::class, $factory);
-
-        $billingService = $this->app->make(BillingService::class);
-        $billingService->handleWebhook('stripe', request());
+        $this->billingService->handleWebhook('stripe', request());
 
         $subscription->refresh();
         $this->assertEquals(SubscriptionStatus::PastDue, $subscription->status);
@@ -470,15 +437,9 @@ class BillingServiceTest extends TestCase
             ],
         );
 
-        $mockGateway = $this->createMock(PaymentGatewayInterface::class);
-        $mockGateway->method('verifyAndParseWebhook')->willReturn($webhook);
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
 
-        $factory = $this->createMock(PaymentGatewayFactory::class);
-        $factory->method('driver')->willReturn($mockGateway);
-        $this->app->instance(PaymentGatewayFactory::class, $factory);
-
-        $billingService = $this->app->make(BillingService::class);
-        $billingService->handleWebhook('stripe', request());
+        $this->billingService->handleWebhook('stripe', request());
 
         $this->assertDatabaseHas('invoices', [
             'customer_id' => $customer->id,

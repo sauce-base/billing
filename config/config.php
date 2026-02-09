@@ -27,30 +27,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Payment Gateways
-    |--------------------------------------------------------------------------
-    |
-    | Configuration for available payment gateways.
-    | Each gateway can be enabled/disabled independently.
-    |
-    */
-    // 'gateways' => [
-    //     'stripe' => [
-    //         'driver' => \Modules\Billing\Services\Gateways\StripeGateway::class,
-    //         'enabled' => true,
-    //     ],
-    //     'paddle' => [
-    //         'driver' => \Modules\Billing\Services\Gateways\PaddleGateway::class,
-    //         'enabled' => env('BILLING_PADDLE_ENABLED', false),
-    //     ],
-    //     'lemonsqueezy' => [
-    //         'driver' => \Modules\Billing\Services\Gateways\LemonSqueezyGateway::class,
-    //         'enabled' => env('BILLING_LEMONSQUEEZY_ENABLED', false),
-    //     ],
-    // ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Payment Gateway Logging
     |--------------------------------------------------------------------------
     |

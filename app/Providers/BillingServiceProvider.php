@@ -6,9 +6,7 @@ use App\Providers\ModuleServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Services\BillingService;
-use Modules\Billing\Services\Gateways\StripeGateway;
-use Modules\Billing\Services\PaymentGatewayFactory;
-use Stripe\StripeClient;
+use Modules\Billing\Services\PaymentGatewayManager;
 
 class BillingServiceProvider extends ModuleServiceProvider
 {
@@ -24,29 +22,12 @@ class BillingServiceProvider extends ModuleServiceProvider
     {
         parent::register();
 
-        // Register StripeClient as singleton for dependency injection
-        $this->app->singleton(StripeClient::class, function () {
-            return new StripeClient(config('services.stripe.secret_key'));
-        });
+        $this->app->singleton(PaymentGatewayManager::class);
 
-        // Tag all payment gateways for auto-registration
-        $this->app->tag([
-            StripeGateway::class,
-            // Future gateways will be added here
-            // PaddleGateway::class,
-            // LemonSqueezyGateway::class,
-        ], 'payment-gateways');
-
-        // Register PaymentGatewayFactory as singleton
-        $this->app->singleton(PaymentGatewayFactory::class);
-
-        // Bind interface to factory resolution
         $this->app->bind(PaymentGatewayInterface::class, function ($app) {
-            return $app->make(PaymentGatewayFactory::class)
-                ->driver(config('billing.default_gateway'));
+            return $app->make(PaymentGatewayManager::class)->driver();
         });
 
-        // Register BillingService as singleton
         $this->app->singleton(BillingService::class);
     }
 

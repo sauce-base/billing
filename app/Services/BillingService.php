@@ -6,7 +6,6 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutData;
 use Modules\Billing\Data\CheckoutResultData;
 use Modules\Billing\Data\WebhookData;
@@ -33,7 +32,7 @@ use Modules\Billing\Models\Subscription;
 class BillingService
 {
     public function __construct(
-        private PaymentGatewayInterface $gateway,
+        private PaymentGatewayManager $manager,
     ) {}
 
     public function checkout(User $user, Price $price, string $successUrl, string $cancelUrl): CheckoutResultData
@@ -47,7 +46,7 @@ class BillingService
             cancelUrl: $cancelUrl,
         );
 
-        $result = $this->gateway->createCheckoutSession($data);
+        $result = $this->manager->driver()->createCheckoutSession($data);
 
         CheckoutSession::create([
             'customer_id' => $customer->id,
@@ -85,7 +84,7 @@ class BillingService
             cancelUrl: $cancelUrl,
         );
 
-        $result = $this->gateway->createCheckoutSession($data);
+        $result = $this->manager->driver()->createCheckoutSession($data);
 
         $session->update([
             'customer_id' => $customer->id,
@@ -99,8 +98,7 @@ class BillingService
 
     public function handleWebhook(string $provider, Request $request): void
     {
-        $factory = app(PaymentGatewayFactory::class);
-        $gateway = $factory->driver($provider);
+        $gateway = $this->manager->driver($provider);
         $webhook = $gateway->verifyAndParseWebhook($request);
 
         match ($webhook->type) {
@@ -116,14 +114,14 @@ class BillingService
 
     public function cancel(Subscription $subscription, bool $immediately = false): void
     {
-        $this->gateway->cancelSubscription($subscription, $immediately);
+        $this->manager->driver()->cancelSubscription($subscription, $immediately);
     }
 
     public function getManagementUrl(User $user): string
     {
         $customer = Customer::where('user_id', $user->id)->firstOrFail();
 
-        return $this->gateway->getManagementUrl($customer);
+        return $this->manager->driver()->getManagementUrl($customer);
     }
 
     private function ensureCustomer(User $user): Customer
@@ -134,7 +132,7 @@ class BillingService
             return $customer;
         }
 
-        $providerCustomerId = $this->gateway->createCustomer($user->name, $user->email);
+        $providerCustomerId = $this->manager->driver()->createCustomer($user->name, $user->email);
 
         return Customer::create([
             'user_id' => $user->id,
