@@ -1,7 +1,5 @@
 <?php
 
-use Modules\Billing\Enums\Currency;
-
 return [
     'name' => 'Billing',
 
