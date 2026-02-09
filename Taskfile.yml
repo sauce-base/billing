@@ -1,0 +1,9 @@
+# https://taskfile.dev
+version: '3'
+
+tasks:
+    # ── Webhook ───────────────────────────────────────────────────
+
+    stripe:listen:
+        desc: Listen to Stripe webhooks and forward to local endpoint
+        cmd: stripe listen --forward-to https://localhost/billing/webhooks/stripe
