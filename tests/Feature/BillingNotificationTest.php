@@ -36,6 +36,8 @@ class BillingNotificationTest extends TestCase
 
         Notification::fake();
 
+        $this->seed(\Database\Seeders\RolesDatabaseSeeder::class);
+
         $this->user = User::factory()->create();
         $this->customer = Customer::factory()->create(['user_id' => $this->user->id]);
     }

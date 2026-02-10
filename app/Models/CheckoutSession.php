@@ -16,7 +16,6 @@ class CheckoutSession extends Model
         'uuid',
         'customer_id',
         'price_id',
-        'payment_method_id',
         'provider_session_id',
         'success_url',
         'cancel_url',
@@ -65,13 +64,5 @@ class CheckoutSession extends Model
     public function price(): BelongsTo
     {
         return $this->belongsTo(Price::class);
-    }
-
-    /**
-     * @return BelongsTo<PaymentMethod, $this>
-     */
-    public function paymentMethod(): BelongsTo
-    {
-        return $this->belongsTo(PaymentMethod::class);
     }
 }

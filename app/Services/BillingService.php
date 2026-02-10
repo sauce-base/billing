@@ -5,7 +5,6 @@ namespace Modules\Billing\Services;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Modules\Billing\Data\CheckoutData;
 use Modules\Billing\Data\CheckoutResultData;
 use Modules\Billing\Data\WebhookData;
@@ -26,7 +25,7 @@ use Modules\Billing\Models\CheckoutSession;
 use Modules\Billing\Models\Customer;
 use Modules\Billing\Models\Invoice;
 use Modules\Billing\Models\Payment;
-use Modules\Billing\Models\Price;
+use Modules\Billing\Models\PaymentMethod;
 use Modules\Billing\Models\Subscription;
 
 class BillingService
@@ -35,47 +34,13 @@ class BillingService
         private PaymentGatewayManager $manager,
     ) {}
 
-    public function checkout(User $user, Price $price, string $successUrl, string $cancelUrl): CheckoutResultData
+    /**
+     * @param  array<string, mixed>  $billingDetails
+     */
+    public function processCheckout(CheckoutSession $session, User $user, string $successUrl, string $cancelUrl, array $billingDetails = []): CheckoutResultData
     {
-        $customer = $this->ensureCustomer($user);
-
-        $data = new CheckoutData(
-            customer: $customer,
-            price: $price,
-            successUrl: $successUrl,
-            cancelUrl: $cancelUrl,
-        );
-
-        $result = $this->manager->driver()->createCheckoutSession($data);
-
-        CheckoutSession::create([
-            'customer_id' => $customer->id,
-            'price_id' => $price->id,
-            'provider_session_id' => $result->sessionId,
-            'success_url' => $successUrl,
-            'cancel_url' => $cancelUrl,
-            'status' => CheckoutSessionStatus::Pending,
-        ]);
-
-        return $result;
-    }
-
-    public function processCheckout(CheckoutSession $session, string $name, string $email): CheckoutResultData
-    {
-        $user = User::firstOrCreate(
-            ['email' => $email],
-            [
-                'name' => $name,
-                'password' => bcrypt(Str::random(32)),
-                'email_verified_at' => now(),
-            ],
-        );
-
-        $customer = $this->ensureCustomer($user);
+        $customer = $this->ensureCustomer($user, billingDetails: $billingDetails);
         $price = $session->price()->with('product')->firstOrFail();
-
-        $successUrl = auth()->check() ? route('billing.index') : route('index');
-        $cancelUrl = route('billing.checkout', $session);
 
         $data = new CheckoutData(
             customer: $customer,
@@ -124,21 +89,71 @@ class BillingService
         return $this->manager->driver()->getManagementUrl($customer);
     }
 
-    private function ensureCustomer(User $user): Customer
+    /**
+     * @param  array<string, mixed>  $billingDetails
+     */
+    private function ensureCustomer(User $user, ?string $provider = null, array $billingDetails = []): Customer
     {
+        $name = $billingDetails['name'] ?? $user->name;
+        $email = $billingDetails['email'] ?? $user->email;
+        $phone = $billingDetails['phone'] ?? null;
+        $address = $billingDetails['address'] ?? null;
+
         $customer = Customer::where('user_id', $user->id)->first();
 
         if ($customer) {
+            $customer->update(array_filter([
+                'name' => $name,
+                'email' => $email,
+                'phone' => $phone,
+                'address' => $address,
+            ]));
+
             return $customer;
         }
 
-        $providerCustomerId = $this->manager->driver()->createCustomer($user->name, $user->email);
+        $providerCustomerId = $this->manager->driver($provider)->createCustomer($name, $email);
 
         return Customer::create([
             'user_id' => $user->id,
             'provider_customer_id' => $providerCustomerId,
-            'email' => $user->email,
-            'name' => $user->name,
+            'email' => $email,
+            'name' => $name,
+            'phone' => $phone,
+            'address' => $address,
+        ]);
+    }
+
+    private function ensurePaymentMethod(Customer $customer, string $providerId, string $provider): ?PaymentMethod
+    {
+        $data = $this->manager->driver($provider)->resolvePaymentMethod($providerId);
+
+        if (! $data) {
+            return null;
+        }
+
+        $existing = PaymentMethod::where('provider_payment_method_id', $data->providerPaymentMethodId)->first();
+
+        if ($existing) {
+            if (! $existing->is_default) {
+                PaymentMethod::where('customer_id', $customer->id)->where('is_default', true)->update(['is_default' => false]);
+                $existing->update(['is_default' => true]);
+            }
+
+            return $existing;
+        }
+
+        PaymentMethod::where('customer_id', $customer->id)->where('is_default', true)->update(['is_default' => false]);
+
+        return PaymentMethod::create([
+            'customer_id' => $customer->id,
+            'provider_payment_method_id' => $data->providerPaymentMethodId,
+            'type' => $data->type,
+            'card_brand' => $data->cardBrand,
+            'card_last_four' => $data->cardLastFour,
+            'card_exp_month' => $data->cardExpMonth,
+            'card_exp_year' => $data->cardExpYear,
+            'is_default' => true,
         ]);
     }
 
@@ -155,12 +170,16 @@ class BillingService
 
         $session->update(['status' => CheckoutSessionStatus::Completed]);
 
+        $customer = $session->customer;
         $subscriptionId = $payload['subscription'] ?? null;
 
         if ($subscriptionId) {
+            $pm = $customer ? $this->ensurePaymentMethod($customer, $subscriptionId, $webhook->provider) : null;
+
             $subscription = Subscription::create([
                 'customer_id' => $session->customer_id,
                 'price_id' => $session->price_id,
+                'payment_method_id' => $pm?->id,
                 'provider_subscription_id' => $subscriptionId,
                 'status' => SubscriptionStatus::Active,
                 'current_period_starts_at' => now(),
@@ -168,9 +187,12 @@ class BillingService
 
             event(new SubscriptionCreated($subscription));
         } elseif ($payload['payment_intent'] ?? null) {
+            $pm = $customer ? $this->ensurePaymentMethod($customer, $payload['payment_intent'], $webhook->provider) : null;
+
             $payment = Payment::create([
                 'customer_id' => $session->customer_id,
                 'price_id' => $session->price_id,
+                'payment_method_id' => $pm?->id,
                 'provider_payment_id' => $payload['payment_intent'],
                 'currency' => Currency::tryFrom(strtoupper($payload['currency'] ?? Currency::default())) ?? Currency::default(), // TODO: make it simpler
                 'amount' => $payload['amount_total'] ?? 0,
@@ -202,6 +224,11 @@ class BillingService
         };
 
         $updates = ['status' => $status];
+
+        if ($payload['default_payment_method'] ?? null) {
+            $pm = $this->ensurePaymentMethod($subscription->customer, $payload['default_payment_method'], $webhook->provider);
+            $updates['payment_method_id'] = $pm?->id;
+        }
 
         if (isset($payload['current_period_start'])) {
             $updates['current_period_starts_at'] = Carbon::createFromTimestamp($payload['current_period_start']);
@@ -258,9 +285,14 @@ class BillingService
             ? Subscription::where('provider_subscription_id', $payload['subscription'])->first()
             : null;
 
+        $pm = ($payload['default_payment_method'] ?? null)
+            ? $this->ensurePaymentMethod($customer, $payload['default_payment_method'], $webhook->provider)
+            : null;
+
         $payment = Payment::create([
             'customer_id' => $customer->id,
             'subscription_id' => $subscription?->id,
+            'payment_method_id' => $pm?->id,
             'price_id' => $subscription?->price_id,
             'provider_payment_id' => $payload['payment_intent'] ?? $payload['id'],
             'currency' => Currency::tryFrom(strtoupper($payload['currency'] ?? 'USD')) ?? Currency::USD,
@@ -286,9 +318,14 @@ class BillingService
             ? Subscription::where('provider_subscription_id', $payload['subscription'])->first()
             : null;
 
+        $pm = ($payload['default_payment_method'] ?? null)
+            ? $this->ensurePaymentMethod($customer, $payload['default_payment_method'], $webhook->provider)
+            : null;
+
         $payment = Payment::create([
             'customer_id' => $customer->id,
             'subscription_id' => $subscription?->id,
+            'payment_method_id' => $pm?->id,
             'provider_payment_id' => $payload['payment_intent'] ?? $payload['id'],
             'currency' => Currency::tryFrom(strtoupper($payload['currency'] ?? 'USD')) ?? Currency::USD,
             'amount' => $payload['amount_due'] ?? 0,
@@ -317,7 +354,7 @@ class BillingService
             ? Subscription::where('provider_subscription_id', $payload['subscription'])->first()
             : null;
 
-        Invoice::updateOrCreate(
+        $invoice = Invoice::updateOrCreate(
             ['provider_invoice_id' => $payload['id']],
             [
                 'customer_id' => $customer->id,
@@ -334,10 +371,6 @@ class BillingService
             ],
         );
 
-        $invoice = Invoice::where('provider_invoice_id', $payload['id'])->first();
-
-        if ($invoice) {
-            event(new InvoicePaid($invoice));
-        }
+        event(new InvoicePaid($invoice));
     }
 }

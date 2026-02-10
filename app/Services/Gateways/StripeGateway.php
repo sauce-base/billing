@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutData;
 use Modules\Billing\Data\CheckoutResultData;
+use Modules\Billing\Data\PaymentMethodData;
 use Modules\Billing\Data\WebhookData;
 use Modules\Billing\Enums\WebhookEventType;
 use Modules\Billing\Models\Customer;
@@ -89,6 +90,31 @@ class StripeGateway implements PaymentGatewayInterface
         ]);
 
         return $session->url;
+    }
+
+    public function resolvePaymentMethod(string $providerId): ?PaymentMethodData
+    {
+        $pmId = match (true) {
+            str_starts_with($providerId, 'pm_') => $providerId,
+            str_starts_with($providerId, 'sub_') => $this->stripe->subscriptions->retrieve($providerId)->default_payment_method,
+            str_starts_with($providerId, 'pi_') => $this->stripe->paymentIntents->retrieve($providerId)->payment_method,
+            default => null,
+        };
+
+        if (! $pmId) {
+            return null;
+        }
+
+        $pm = $this->stripe->paymentMethods->retrieve($pmId);
+
+        return new PaymentMethodData(
+            providerPaymentMethodId: $pm->id,
+            type: $pm->type,
+            cardBrand: $pm->card?->brand,
+            cardLastFour: $pm->card?->last4,
+            cardExpMonth: $pm->card?->exp_month,
+            cardExpYear: $pm->card?->exp_year,
+        );
     }
 
     public function verifyAndParseWebhook(Request $request): WebhookData

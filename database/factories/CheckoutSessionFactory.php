@@ -27,7 +27,6 @@ class CheckoutSessionFactory extends Factory
             'uuid' => (string) Str::uuid(),
             'customer_id' => Customer::factory(),
             'price_id' => Price::factory(),
-            'payment_method_id' => null,
             'provider_session_id' => 'cs_'.fake()->regexify('[A-Za-z0-9]{24}'),
             'success_url' => 'https://example.com/success',
             'cancel_url' => 'https://example.com/cancel',

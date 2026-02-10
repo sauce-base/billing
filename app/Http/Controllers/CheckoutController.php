@@ -42,24 +42,23 @@ class CheckoutController
 
     public function store(Request $request, CheckoutSession $checkoutSession)
     {
-        $user = $request->user();
-
-        $rules = [];
-
-        if (! $user) {
-            $rules['name'] = ['required', 'string', 'max:255'];
-            $rules['email'] = ['required', 'email', 'max:255'];
-        }
-
-        $validated = $request->validate($rules);
-
-        $name = $user ? $user->name : $validated['name'];
-        $email = $user ? $user->email : $validated['email'];
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'address.street' => ['nullable', 'string', 'max:255'],
+            'address.city' => ['nullable', 'string', 'max:255'],
+            'address.state' => ['nullable', 'string', 'max:255'],
+            'address.postal_code' => ['nullable', 'string', 'max:20'],
+            'address.country' => ['nullable', 'string', 'max:2'],
+        ]);
 
         $result = $this->billingService->processCheckout(
             session: $checkoutSession,
-            name: $name,
-            email: $email,
+            user: $request->user(),
+            successUrl: route('billing.index'),
+            cancelUrl: route('billing.checkout', $checkoutSession),
+            billingDetails: $validated,
         );
 
         return Inertia::location($result->url);

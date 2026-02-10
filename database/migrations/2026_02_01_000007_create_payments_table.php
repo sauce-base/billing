@@ -4,6 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Modules\Billing\Models\Customer;
+use Modules\Billing\Models\PaymentMethod;
+use Modules\Billing\Models\Price;
 use Modules\Billing\Models\Subscription;
 
 return new class extends Migration
@@ -19,6 +21,8 @@ return new class extends Migration
             // Foreign keys
             $table->foreignIdFor(Customer::class)->constrained()->cascadeOnDelete();
             $table->foreignIdFor(Subscription::class)->nullable()->constrained()->nullOnDelete();
+            $table->foreignIdFor(PaymentMethod::class)->nullable()->constrained()->nullOnDelete();
+            $table->foreignIdFor(Price::class)->nullable()->constrained()->nullOnDelete();
 
             // Provider identifiers
             $table->string('provider_payment_id')->nullable();

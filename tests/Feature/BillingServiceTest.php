@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutResultData;
+use Modules\Billing\Data\PaymentMethodData;
 use Modules\Billing\Data\WebhookData;
 use Modules\Billing\Enums\CheckoutSessionStatus;
 use Modules\Billing\Enums\PaymentStatus;
@@ -41,6 +42,16 @@ class BillingServiceTest extends TestCase
         parent::setUp();
 
         $this->gateway = $this->createMock(PaymentGatewayInterface::class);
+        $this->gateway->method('resolvePaymentMethod')->willReturn(
+            new PaymentMethodData(
+                providerPaymentMethodId: 'pm_test_123',
+                type: 'card',
+                cardBrand: 'visa',
+                cardLastFour: '4242',
+                cardExpMonth: 12,
+                cardExpYear: 2030,
+            ),
+        );
 
         $manager = $this->createMock(PaymentGatewayManager::class);
         $manager->method('driver')->willReturn($this->gateway);
@@ -49,36 +60,9 @@ class BillingServiceTest extends TestCase
         $this->billingService = $this->app->make(BillingService::class);
     }
 
-    public function test_checkout_creates_customer_if_missing(): void
+    public function test_process_checkout_creates_customer(): void
     {
-        Event::fake([CheckoutCompleted::class]);
-
         $user = User::factory()->create();
-        $price = Price::factory()->create();
-
-        $this->gateway->method('createCustomer')->willReturn('cus_test_123');
-        $this->gateway->method('createCheckoutSession')->willReturn(
-            new CheckoutResultData(sessionId: 'cs_test_123', url: 'https://stripe.com/checkout', provider: 'stripe'),
-        );
-
-        $result = $this->billingService->checkout($user, $price, 'https://example.com/success', 'https://example.com/cancel');
-
-        $this->assertEquals('cs_test_123', $result->sessionId);
-        $this->assertEquals('https://stripe.com/checkout', $result->url);
-        $this->assertDatabaseHas('customers', [
-            'user_id' => $user->id,
-            'provider_customer_id' => 'cus_test_123',
-        ]);
-        $this->assertDatabaseHas('checkout_sessions', [
-            'provider_session_id' => 'cs_test_123',
-            'status' => CheckoutSessionStatus::Pending->value,
-        ]);
-    }
-
-    public function test_process_checkout_creates_user_and_customer(): void
-    {
-        Event::fake([CheckoutCompleted::class]);
-
         $price = Price::factory()->create();
         $session = CheckoutSession::create([
             'price_id' => $price->id,
@@ -91,50 +75,35 @@ class BillingServiceTest extends TestCase
             new CheckoutResultData(sessionId: 'cs_guest_123', url: 'https://stripe.com/checkout', provider: 'stripe'),
         );
 
-        $result = $this->billingService->processCheckout($session, 'John Doe', 'john@example.com');
+        $billingDetails = [
+            'name' => 'Billing Name',
+            'email' => 'billing@example.com',
+            'phone' => '+1234567890',
+            'address' => [
+                'street' => '123 Main St',
+                'city' => 'Springfield',
+                'state' => 'IL',
+                'postal_code' => '62701',
+                'country' => 'US',
+            ],
+        ];
+
+        $result = $this->billingService->processCheckout($session, $user, 'https://example.com/success', 'https://example.com/cancel', $billingDetails);
 
         $this->assertEquals('cs_guest_123', $result->sessionId);
         $this->assertEquals('https://stripe.com/checkout', $result->url);
 
-        $user = User::where('email', 'john@example.com')->first();
-        $this->assertNotNull($user);
-        $this->assertEquals('John Doe', $user->name);
-        $this->assertNotNull($user->email_verified_at);
-
         $this->assertDatabaseHas('customers', [
             'user_id' => $user->id,
             'provider_customer_id' => 'cus_guest_123',
-            'email' => 'john@example.com',
+            'name' => 'Billing Name',
+            'email' => 'billing@example.com',
+            'phone' => '+1234567890',
         ]);
 
         $session->refresh();
         $this->assertNotNull($session->customer_id);
         $this->assertEquals('cs_guest_123', $session->provider_session_id);
-    }
-
-    public function test_process_checkout_reuses_existing_user(): void
-    {
-        Event::fake([CheckoutCompleted::class]);
-
-        $existingUser = User::factory()->create(['email' => 'existing@example.com']);
-        $price = Price::factory()->create();
-        $session = CheckoutSession::create([
-            'price_id' => $price->id,
-            'status' => CheckoutSessionStatus::Pending,
-            'expires_at' => now()->addHours(24),
-        ]);
-
-        $this->gateway->method('createCustomer')->willReturn('cus_existing_123');
-        $this->gateway->method('createCheckoutSession')->willReturn(
-            new CheckoutResultData(sessionId: 'cs_existing_123', url: 'https://stripe.com/checkout', provider: 'stripe'),
-        );
-
-        $this->billingService->processCheckout($session, 'Any Name', 'existing@example.com');
-
-        $this->assertDatabaseCount('users', 1);
-        $this->assertDatabaseHas('customers', [
-            'user_id' => $existingUser->id,
-        ]);
     }
 
     public function test_checkout_session_generates_uuid_automatically(): void
@@ -153,25 +122,6 @@ class BillingServiceTest extends TestCase
     {
         $session = new CheckoutSession;
         $this->assertEquals('uuid', $session->getRouteKeyName());
-    }
-
-    public function test_checkout_reuses_existing_customer(): void
-    {
-        Event::fake([CheckoutCompleted::class]);
-
-        $user = User::factory()->create();
-        $customer = Customer::factory()->create(['user_id' => $user->id]);
-        $price = Price::factory()->create();
-
-        $this->gateway->expects($this->never())->method('createCustomer');
-        $this->gateway->method('createCheckoutSession')->willReturn(
-            new CheckoutResultData(sessionId: 'cs_test_456', url: 'https://stripe.com/checkout', provider: 'stripe'),
-        );
-
-        $result = $this->billingService->checkout($user, $price, 'https://example.com/success', 'https://example.com/cancel');
-
-        $this->assertEquals('cs_test_456', $result->sessionId);
-        $this->assertDatabaseCount('customers', 1);
     }
 
     public function test_cancel_delegates_to_gateway(): void
@@ -220,10 +170,16 @@ class BillingServiceTest extends TestCase
 
         $session->refresh();
         $this->assertEquals(CheckoutSessionStatus::Completed, $session->status);
-        $this->assertDatabaseHas('subscriptions', [
-            'provider_subscription_id' => 'sub_test_123',
-            'customer_id' => $session->customer_id,
-            'status' => SubscriptionStatus::Active->value,
+
+        $subscription = Subscription::where('provider_subscription_id', 'sub_test_123')->first();
+        $this->assertNotNull($subscription);
+        $this->assertEquals($session->customer_id, $subscription->customer_id);
+        $this->assertEquals(SubscriptionStatus::Active, $subscription->status);
+        $this->assertNotNull($subscription->payment_method_id);
+        $this->assertDatabaseHas('payment_methods', [
+            'provider_payment_method_id' => 'pm_test_123',
+            'card_brand' => 'visa',
+            'card_last_four' => '4242',
         ]);
 
         Event::assertDispatched(CheckoutCompleted::class);
@@ -256,12 +212,16 @@ class BillingServiceTest extends TestCase
 
         $session->refresh();
         $this->assertEquals(CheckoutSessionStatus::Completed, $session->status);
-        $this->assertDatabaseHas('payments', [
-            'customer_id' => $session->customer_id,
-            'price_id' => $session->price_id,
-            'provider_payment_id' => 'pi_test_onetime',
-            'amount' => 29900,
-            'status' => PaymentStatus::Succeeded->value,
+
+        $payment = \Modules\Billing\Models\Payment::where('provider_payment_id', 'pi_test_onetime')->first();
+        $this->assertNotNull($payment);
+        $this->assertEquals($session->customer_id, $payment->customer_id);
+        $this->assertEquals(29900, $payment->amount);
+        $this->assertEquals(PaymentStatus::Succeeded, $payment->status);
+        $this->assertNotNull($payment->payment_method_id);
+        $this->assertDatabaseHas('payment_methods', [
+            'provider_payment_method_id' => 'pm_test_123',
+            'card_brand' => 'visa',
         ]);
         $this->assertDatabaseCount('subscriptions', 0);
 
@@ -285,6 +245,7 @@ class BillingServiceTest extends TestCase
             payload: [
                 'id' => 'sub_test_update',
                 'status' => 'past_due',
+                'default_payment_method' => 'pm_test_sub_update',
                 'current_period_start' => 1700000000,
                 'current_period_end' => 1702592000,
             ],
@@ -296,6 +257,12 @@ class BillingServiceTest extends TestCase
 
         $subscription->refresh();
         $this->assertEquals(SubscriptionStatus::PastDue, $subscription->status);
+        $this->assertNotNull($subscription->payment_method_id);
+        $this->assertDatabaseHas('payment_methods', [
+            'provider_payment_method_id' => 'pm_test_123',
+            'card_brand' => 'visa',
+            'card_last_four' => '4242',
+        ]);
 
         Event::assertDispatched(SubscriptionUpdated::class);
     }
@@ -349,6 +316,7 @@ class BillingServiceTest extends TestCase
                 'id' => 'in_test_123',
                 'customer' => 'cus_test_pay',
                 'subscription' => 'sub_test_pay',
+                'default_payment_method' => 'pm_test_pay',
                 'payment_intent' => 'pi_test_123',
                 'currency' => 'usd',
                 'amount_paid' => 2900,
@@ -359,6 +327,11 @@ class BillingServiceTest extends TestCase
 
         $this->billingService->handleWebhook('stripe', request());
 
+        $this->assertDatabaseHas('payment_methods', [
+            'provider_payment_method_id' => 'pm_test_123',
+            'customer_id' => $customer->id,
+            'card_brand' => 'visa',
+        ]);
         $this->assertDatabaseHas('payments', [
             'customer_id' => $customer->id,
             'subscription_id' => $subscription->id,
@@ -366,6 +339,9 @@ class BillingServiceTest extends TestCase
             'amount' => 2900,
             'status' => PaymentStatus::Succeeded->value,
         ]);
+
+        $payment = \Modules\Billing\Models\Payment::where('provider_payment_id', 'pi_test_123')->first();
+        $this->assertNotNull($payment->payment_method_id);
 
         Event::assertDispatched(PaymentSucceeded::class);
     }
@@ -391,6 +367,7 @@ class BillingServiceTest extends TestCase
                 'id' => 'in_test_456',
                 'customer' => 'cus_test_fail',
                 'subscription' => 'sub_test_fail',
+                'default_payment_method' => 'pm_test_fail',
                 'payment_intent' => 'pi_test_456',
                 'currency' => 'usd',
                 'amount_due' => 2900,
@@ -404,10 +381,17 @@ class BillingServiceTest extends TestCase
         $subscription->refresh();
         $this->assertEquals(SubscriptionStatus::PastDue, $subscription->status);
 
+        $this->assertDatabaseHas('payment_methods', [
+            'provider_payment_method_id' => 'pm_test_123',
+            'customer_id' => $customer->id,
+        ]);
         $this->assertDatabaseHas('payments', [
             'customer_id' => $customer->id,
             'status' => PaymentStatus::Failed->value,
         ]);
+
+        $payment = \Modules\Billing\Models\Payment::where('provider_payment_id', 'pi_test_456')->first();
+        $this->assertNotNull($payment->payment_method_id);
 
         Event::assertDispatched(PaymentFailed::class);
     }

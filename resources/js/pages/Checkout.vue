@@ -24,6 +24,14 @@ const product = computed(() => price.value.product);
 const form = useForm({
     name: user.value?.name ?? '',
     email: user.value?.email ?? '',
+    phone: '',
+    address: {
+        street: '',
+        city: '',
+        state: '',
+        postal_code: '',
+        country: '',
+    },
 });
 
 function formatPrice(amount: number): string {
@@ -130,7 +138,7 @@ function handleCheckout() {
                 </div>
             </div>
 
-            <!-- Contact Info Form -->
+            <!-- Billing Information Form -->
             <div class="order-last lg:order-first">
                 <div
                     class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
@@ -138,47 +146,91 @@ function handleCheckout() {
                     <h2
                         class="text-lg font-semibold text-gray-900 dark:text-white"
                     >
-                        {{ $t('Contact information') }}
+                        {{ $t('Billing information') }}
                     </h2>
 
                     <form
                         @submit.prevent="handleCheckout"
                         class="mt-4 space-y-4"
                     >
-                        <template v-if="!user">
+                        <InputField
+                            name="name"
+                            type="text"
+                            :label="$t('Name')"
+                            :placeholder="$t('Enter your name')"
+                            autocomplete="name"
+                            required
+                            v-model="form.name"
+                        />
+
+                        <InputField
+                            name="email"
+                            type="email"
+                            :label="$t('Email')"
+                            :placeholder="$t('Enter your email')"
+                            autocomplete="email"
+                            required
+                            v-model="form.email"
+                        />
+
+                        <InputField
+                            name="phone"
+                            type="tel"
+                            :label="$t('Phone')"
+                            :placeholder="$t('Enter your phone number')"
+                            autocomplete="tel"
+                            v-model="form.phone"
+                        />
+
+                        <InputField
+                            name="address.street"
+                            type="text"
+                            :label="$t('Street address')"
+                            :placeholder="$t('Enter your street address')"
+                            autocomplete="street-address"
+                            v-model="form.address.street"
+                        />
+
+                        <div class="grid grid-cols-2 gap-4">
                             <InputField
-                                name="name"
+                                name="address.city"
                                 type="text"
-                                :label="$t('Name')"
-                                :placeholder="$t('Enter your name')"
-                                autocomplete="name"
-                                required
-                                v-model="form.name"
-                                :error="form.errors.name"
+                                :label="$t('City')"
+                                :placeholder="$t('City')"
+                                autocomplete="address-level2"
+                                v-model="form.address.city"
                             />
 
                             <InputField
-                                name="email"
-                                type="email"
-                                :label="$t('Email')"
-                                :placeholder="$t('Enter your email')"
-                                autocomplete="email"
-                                required
-                                v-model="form.email"
-                                :error="form.errors.email"
+                                name="address.state"
+                                type="text"
+                                :label="$t('State')"
+                                :placeholder="$t('State')"
+                                autocomplete="address-level1"
+                                v-model="form.address.state"
                             />
-                        </template>
+                        </div>
 
-                        <template v-else>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">
-                                {{
-                                    $t('Checking out as :name (:email)', {
-                                        name: user.name,
-                                        email: user.email,
-                                    })
-                                }}
-                            </p>
-                        </template>
+                        <div class="grid grid-cols-2 gap-4">
+                            <InputField
+                                name="address.postal_code"
+                                type="text"
+                                :label="$t('Postal code')"
+                                :placeholder="$t('Postal code')"
+                                autocomplete="postal-code"
+                                v-model="form.address.postal_code"
+                            />
+
+                            <InputField
+                                name="address.country"
+                                type="text"
+                                :label="$t('Country')"
+                                :placeholder="$t('e.g. US')"
+                                autocomplete="country"
+                                maxlength="2"
+                                v-model="form.address.country"
+                            />
+                        </div>
 
                         <Button
                             type="submit"
