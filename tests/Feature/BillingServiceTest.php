@@ -10,6 +10,7 @@ use Modules\Billing\Data\CheckoutResultData;
 use Modules\Billing\Data\PaymentMethodData;
 use Modules\Billing\Data\WebhookData;
 use Modules\Billing\Enums\CheckoutSessionStatus;
+use Modules\Billing\Enums\Currency;
 use Modules\Billing\Enums\PaymentStatus;
 use Modules\Billing\Enums\SubscriptionStatus;
 use Modules\Billing\Enums\WebhookEventType;
@@ -149,7 +150,7 @@ class BillingServiceTest extends TestCase
 
     public function test_webhook_checkout_completed_creates_subscription(): void
     {
-        Event::fake([CheckoutCompleted::class, SubscriptionCreated::class]);
+        Event::fake([CheckoutCompleted::class, SubscriptionCreated::class, PaymentSucceeded::class]);
 
         $session = CheckoutSession::factory()->create([
             'provider_session_id' => 'cs_test_789',
@@ -162,6 +163,8 @@ class BillingServiceTest extends TestCase
             payload: [
                 'id' => 'cs_test_789',
                 'subscription' => 'sub_test_123',
+                'currency' => 'eur',
+                'amount_total' => 2900,
             ],
         );
 
@@ -183,8 +186,17 @@ class BillingServiceTest extends TestCase
             'card_last_four' => '4242',
         ]);
 
+        // Checkout now also creates the initial payment for the subscription
+        $payment = \Modules\Billing\Models\Payment::where('subscription_id', $subscription->id)->first();
+        $this->assertNotNull($payment);
+        $this->assertEquals($session->customer_id, $payment->customer_id);
+        $this->assertEquals($session->price_id, $payment->price_id);
+        $this->assertEquals(2900, $payment->amount);
+        $this->assertEquals(PaymentStatus::Succeeded, $payment->status);
+
         Event::assertDispatched(CheckoutCompleted::class);
         Event::assertDispatched(SubscriptionCreated::class);
+        Event::assertDispatched(PaymentSucceeded::class);
     }
 
     public function test_webhook_checkout_completed_creates_payment_for_one_time_purchase(): void
@@ -228,6 +240,195 @@ class BillingServiceTest extends TestCase
 
         Event::assertDispatched(CheckoutCompleted::class);
         Event::assertDispatched(PaymentSucceeded::class);
+    }
+
+    public function test_webhook_checkout_completed_creates_payment_for_subscription(): void
+    {
+        Event::fake([CheckoutCompleted::class, SubscriptionCreated::class, PaymentSucceeded::class]);
+
+        $session = CheckoutSession::factory()->create([
+            'provider_session_id' => 'cs_test_sub_pay',
+        ]);
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::CheckoutCompleted,
+            provider: 'stripe',
+            providerEventId: 'evt_test_sub_pay',
+            payload: [
+                'id' => 'cs_test_sub_pay',
+                'subscription' => 'sub_test_sub_pay',
+                'currency' => 'eur',
+                'amount_total' => 2900,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $subscription = Subscription::where('provider_subscription_id', 'sub_test_sub_pay')->first();
+        $this->assertNotNull($subscription);
+
+        $payment = \Modules\Billing\Models\Payment::where('subscription_id', $subscription->id)->first();
+        $this->assertNotNull($payment);
+        $this->assertEquals($session->customer_id, $payment->customer_id);
+        $this->assertEquals($session->price_id, $payment->price_id);
+        $this->assertEquals(2900, $payment->amount);
+        $this->assertEquals(PaymentStatus::Succeeded, $payment->status);
+
+        Event::assertDispatched(SubscriptionCreated::class);
+        Event::assertDispatched(PaymentSucceeded::class);
+    }
+
+    public function test_webhook_payment_succeeded_skips_event_when_subscription_not_yet_created(): void
+    {
+        Event::fake([PaymentSucceeded::class]);
+
+        $customer = Customer::factory()->create([
+            'provider_customer_id' => 'cus_test_orphan',
+        ]);
+
+        // Invoice webhook arrives before checkout.session.completed — no Subscription exists yet
+        $webhook = new WebhookData(
+            type: WebhookEventType::PaymentSucceeded,
+            provider: 'stripe',
+            providerEventId: 'evt_test_orphan',
+            payload: [
+                'id' => 'in_test_orphan',
+                'customer' => 'cus_test_orphan',
+                'subscription' => 'sub_not_yet_created',
+                'payment_intent' => 'pi_test_orphan',
+                'currency' => 'eur',
+                'amount_paid' => 2900,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        // Payment is saved for auditing
+        $this->assertDatabaseHas('payments', [
+            'customer_id' => $customer->id,
+            'provider_payment_id' => 'pi_test_orphan',
+            'subscription_id' => null,
+        ]);
+
+        // Event is NOT dispatched — will fire from onCheckoutCompleted later
+        Event::assertNotDispatched(PaymentSucceeded::class);
+    }
+
+    public function test_checkout_completed_links_orphaned_payment_to_subscription(): void
+    {
+        Event::fake([CheckoutCompleted::class, SubscriptionCreated::class, PaymentSucceeded::class]);
+
+        $session = CheckoutSession::factory()->create([
+            'provider_session_id' => 'cs_test_orphan_link',
+        ]);
+
+        // Simulate an orphaned payment created by an earlier invoice webhook
+        $orphanedPayment = \Modules\Billing\Models\Payment::create([
+            'customer_id' => $session->customer_id,
+            'subscription_id' => null,
+            'provider_payment_id' => 'pi_orphan_link',
+            'currency' => Currency::EUR,
+            'amount' => 2900,
+            'status' => PaymentStatus::Succeeded,
+        ]);
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::CheckoutCompleted,
+            provider: 'stripe',
+            providerEventId: 'evt_test_orphan_link',
+            payload: [
+                'id' => 'cs_test_orphan_link',
+                'subscription' => 'sub_test_orphan_link',
+                'currency' => 'eur',
+                'amount_total' => 2900,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $subscription = Subscription::where('provider_subscription_id', 'sub_test_orphan_link')->first();
+        $this->assertNotNull($subscription);
+
+        // Orphaned payment is linked to the subscription
+        $orphanedPayment->refresh();
+        $this->assertEquals($subscription->id, $orphanedPayment->subscription_id);
+        $this->assertEquals($session->price_id, $orphanedPayment->price_id);
+
+        // No duplicate payment created
+        $this->assertDatabaseCount('payments', 1);
+
+        Event::assertDispatched(PaymentSucceeded::class);
+        Event::assertDispatched(SubscriptionCreated::class);
+    }
+
+    public function test_webhook_payment_succeeded_merges_into_checkout_created_payment(): void
+    {
+        Event::fake([CheckoutCompleted::class, SubscriptionCreated::class, PaymentSucceeded::class]);
+
+        $session = CheckoutSession::factory()->create([
+            'provider_session_id' => 'cs_test_merge',
+        ]);
+
+        // Step 1: Process checkout.session.completed (creates subscription + payment)
+        $checkoutWebhook = new WebhookData(
+            type: WebhookEventType::CheckoutCompleted,
+            provider: 'stripe',
+            providerEventId: 'evt_test_merge_checkout',
+            payload: [
+                'id' => 'cs_test_merge',
+                'subscription' => 'sub_test_merge',
+                'currency' => 'eur',
+                'amount_total' => 2900,
+            ],
+        );
+
+        // Step 2: invoice.payment_succeeded (should merge, not create duplicate)
+        $invoiceWebhook = new WebhookData(
+            type: WebhookEventType::PaymentSucceeded,
+            provider: 'stripe',
+            providerEventId: 'evt_test_merge_invoice',
+            payload: [
+                'id' => 'in_test_merge',
+                'customer' => $session->customer->provider_customer_id,
+                'subscription' => 'sub_test_merge',
+                'default_payment_method' => 'pm_test_merge',
+                'payment_intent' => 'pi_test_merge',
+                'currency' => 'eur',
+                'amount_paid' => 2900,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')
+            ->willReturnOnConsecutiveCalls($checkoutWebhook, $invoiceWebhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $subscription = Subscription::where('provider_subscription_id', 'sub_test_merge')->first();
+        $this->assertNotNull($subscription);
+        $this->assertDatabaseCount('payments', 1);
+
+        // Payment created by checkout has no provider_payment_id
+        $payment = \Modules\Billing\Models\Payment::where('subscription_id', $subscription->id)->first();
+        $this->assertNull($payment->provider_payment_id);
+
+        // Process invoice webhook
+        $this->billingService->handleWebhook('stripe', request());
+
+        // Still only 1 payment — not duplicated
+        $this->assertDatabaseCount('payments', 1);
+
+        // provider_payment_id is now filled in from the invoice webhook
+        $payment->refresh();
+        $this->assertEquals('pi_test_merge', $payment->provider_payment_id);
+
+        // PaymentSucceeded dispatched only once (from checkout, not from invoice merge)
+        Event::assertDispatchedTimes(PaymentSucceeded::class, 1);
     }
 
     public function test_webhook_subscription_updated_updates_status(): void

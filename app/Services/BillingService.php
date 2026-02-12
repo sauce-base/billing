@@ -201,12 +201,30 @@ class BillingService
             ? $this->ensurePaymentMethod($customer, $payload['default_payment_method'], $webhook->provider)
             : null;
 
+        $providerPaymentId = $payload['payment_intent'] ?? $payload['id'];
+
+        // Merge into existing payment pre-created by checkout.session.completed
+        if ($subscription) {
+            $existing = Payment::where('subscription_id', $subscription->id)
+                ->whereNull('provider_payment_id')
+                ->first();
+
+            if ($existing) {
+                $existing->update([
+                    'provider_payment_id' => $providerPaymentId,
+                    'payment_method_id' => $pm?->id ?? $existing->payment_method_id,
+                ]);
+
+                return $existing;
+            }
+        }
+
         return Payment::create([
             'customer_id' => $customer->id,
             'subscription_id' => $subscription?->id,
             'payment_method_id' => $pm?->id,
             'price_id' => $subscription?->price_id,
-            'provider_payment_id' => $payload['payment_intent'] ?? $payload['id'],
+            'provider_payment_id' => $providerPaymentId,
             'currency' => $this->parseCurrency($payload),
             'amount' => $payload[$amountKey] ?? 0,
             'status' => $status,
@@ -240,6 +258,31 @@ class BillingService
                 'status' => SubscriptionStatus::Active,
                 'current_period_starts_at' => now(),
             ]);
+
+            // Link any payment created by an earlier invoice webhook (race condition)
+            $orphanedPayment = Payment::where('customer_id', $session->customer_id)
+                ->whereNull('subscription_id')
+                ->where('created_at', '>=', now()->subMinutes(5))
+                ->first();
+
+            if ($orphanedPayment) {
+                $orphanedPayment->update([
+                    'subscription_id' => $subscription->id,
+                    'price_id' => $session->price_id,
+                ]);
+                event(new PaymentSucceeded($orphanedPayment));
+            } else {
+                $payment = Payment::create([
+                    'customer_id' => $session->customer_id,
+                    'subscription_id' => $subscription->id,
+                    'price_id' => $session->price_id,
+                    'payment_method_id' => $pm?->id,
+                    'currency' => $this->parseCurrency($payload),
+                    'amount' => $payload['amount_total'] ?? 0,
+                    'status' => PaymentStatus::Succeeded,
+                ]);
+                event(new PaymentSucceeded($payment));
+            }
 
             event(new SubscriptionCreated($subscription));
         } elseif ($payload['payment_intent'] ?? null) {
@@ -344,9 +387,23 @@ class BillingService
     {
         $payment = $this->createPaymentFromWebhook($webhook, PaymentStatus::Succeeded, 'amount_paid');
 
-        if ($payment) {
-            event(new PaymentSucceeded($payment));
+        if (! $payment) {
+            return;
         }
+
+        // Payment was pre-created from checkout — event already dispatched there
+        if (! $payment->wasRecentlyCreated) {
+            return;
+        }
+
+        // Race condition: invoice arrived before checkout created the subscription.
+        // Payment is saved for auditing. Event will fire from onCheckoutCompleted
+        // after it links this orphaned payment to the subscription.
+        if ($payment->subscription_id === null && $this->resolveSubscriptionId($webhook->payload) !== null) {
+            return;
+        }
+
+        event(new PaymentSucceeded($payment));
     }
 
     private function onPaymentFailed(WebhookData $webhook): void
