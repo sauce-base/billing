@@ -26,24 +26,22 @@ class PaymentFailedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        // TODO: translate
-
-        $amount = number_format($this->payment->amount / 100, 2);
-        $currency = $this->payment->currency?->value ?? Currency::default();
+        $currency = $this->payment->currency ?? Currency::default();
+        $amount = $currency->formatAmount($this->payment->amount);
         $failureMessage = $this->payment->failure_message;
 
         $message = (new MailMessage)
-            ->subject('Payment Failed')
-            ->greeting("Hello {$notifiable->name},")
-            ->line("We were unable to process your payment of **{$currency} {$amount}**.");
+            ->subject(__('Payment Failed'))
+            ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
+            ->line(__('We were unable to process your payment of **:amount**.', ['amount' => $amount]));
 
         if ($failureMessage) {
-            $message->line("Reason: {$failureMessage}");
+            $message->line(__('Reason: :reason', ['reason' => $failureMessage]));
         }
 
         return $message
-            ->line('Please update your payment method to avoid service interruption.')
-            ->action('Update Payment Method', route('settings.billing'));
+            ->line(__('Please update your payment method to avoid service interruption.'))
+            ->action(__('Update Payment Method'), route('settings.billing'));
     }
 
     /**

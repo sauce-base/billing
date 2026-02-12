@@ -5,6 +5,7 @@ namespace Modules\Billing\Notifications;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Modules\Billing\Enums\Currency;
 use Modules\Billing\Models\Invoice;
 use Modules\Billing\Models\Payment;
 
@@ -26,25 +27,27 @@ class PaymentSucceededNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        // TODO: translate
-
-        $amount = number_format($this->payment->amount / 100, 2);
-        $currency = $this->payment->currency?->value ?? 'USD';
+        $currency = $this->payment->currency ?? Currency::default();
+        $amount = $currency->formatAmount($this->payment->amount);
         $isOneTime = $this->payment->subscription_id === null;
         $productName = $this->payment->price?->product?->name
             ?? $this->payment->subscription?->price?->product?->name
-            ?? 'your subscription';
+            ?? __('your subscription');
 
         $invoice = Invoice::where('payment_id', $this->payment->id)->first();
         $actionUrl = $invoice?->hosted_invoice_url ?? route('settings.billing');
-        $actionText = $invoice?->hosted_invoice_url ? 'View Invoice' : 'Go to Billing';
+        $actionText = $invoice?->hosted_invoice_url ? __('View Invoice') : __('Go to Billing');
+
+        $line = $isOneTime
+            ? __("We've received your payment of **:amount** for **:product** (one-time purchase).", ['amount' => $amount, 'product' => $productName])
+            : __("We've received your payment of **:amount** for **:product**.", ['amount' => $amount, 'product' => $productName]);
 
         return (new MailMessage)
-            ->subject('Payment Received')
-            ->greeting("Hello {$notifiable->name},")
-            ->line("We've received your payment of **{$currency} {$amount}** for **{$productName}**".($isOneTime ? ' (one-time purchase)' : '').'.')
+            ->subject(__('Payment Received'))
+            ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
+            ->line($line)
             ->action($actionText, $actionUrl)
-            ->line('Thank you for your payment!');
+            ->line(__('Thank you for your payment!'));
     }
 
     /**

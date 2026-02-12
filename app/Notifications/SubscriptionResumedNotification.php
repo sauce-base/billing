@@ -25,16 +25,14 @@ class SubscriptionResumedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        // TODO: translate
-
-        $productName = $this->subscription->price?->product?->name ?? 'your plan';
+        $productName = $this->subscription->price?->product?->name ?? __('your plan');
 
         return (new MailMessage)
-            ->subject('Subscription Resumed')
-            ->greeting("Hello {$notifiable->name},")
-            ->line("Your subscription to **{$productName}** has been resumed.")
-            ->action('Manage Billing', route('settings.billing'))
-            ->line('Welcome back!');
+            ->subject(__('Subscription Resumed'))
+            ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
+            ->line(__('Your subscription to **:product** has been resumed.', ['product' => $productName]))
+            ->action(__('Manage Billing'), route('settings.billing'))
+            ->line(__('Welcome back!'));
     }
 
     /**

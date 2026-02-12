@@ -25,18 +25,16 @@ class SubscriptionCancelledNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        // TODO: translate
-
-        $productName = $this->subscription->price?->product?->name ?? 'your plan';
-        $endsAt = $this->subscription->ends_at?->format('F j, Y') ?? 'the end of your billing period';
+        $productName = $this->subscription->price?->product?->name ?? __('your plan');
+        $endsAt = $this->subscription->ends_at?->format('F j, Y') ?? __('the end of your billing period');
 
         return (new MailMessage)
-            ->subject('Subscription Cancelled')
-            ->greeting("Hello {$notifiable->name},")
-            ->line("Your subscription to **{$productName}** has been cancelled.")
-            ->line("You will continue to have access until **{$endsAt}**.")
-            ->action('Manage Billing', route('settings.billing'))
-            ->line('We hope to see you again!');
+            ->subject(__('Subscription Cancelled'))
+            ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
+            ->line(__('Your subscription to **:product** has been cancelled.', ['product' => $productName]))
+            ->line(__('You will continue to have access until **:date**.', ['date' => $endsAt]))
+            ->action(__('Manage Billing'), route('settings.billing'))
+            ->line(__('We hope to see you again!'));
     }
 
     /**

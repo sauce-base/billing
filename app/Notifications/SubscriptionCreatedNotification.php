@@ -27,18 +27,18 @@ class SubscriptionCreatedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $price = $this->subscription->price;
-        $productName = $price?->product?->name ?? 'our service';
-        $amount = number_format(($price?->amount ?? 0) / 100, 2);
-        $currency = $price?->currency?->value ?? Currency::default();
+        $productName = $price?->product?->name ?? __('our service');
+        $currency = $price?->currency ?? Currency::default();
+        $amount = $currency->formatAmount($price?->amount ?? 0);
         $interval = $price?->interval ?? 'month';
 
         return (new MailMessage)
-            ->subject("Welcome to {$productName}")
-            ->greeting("Hello {$notifiable->name},")
-            ->line("Your subscription to **{$productName}** is now active.")
-            ->line("Plan: **{$productName}** — {$currency} {$amount}/{$interval}")
-            ->action('Go to Dashboard', route('settings.billing'))
-            ->line('Thank you for subscribing!');
+            ->subject(__('Welcome to :product', ['product' => $productName]))
+            ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
+            ->line(__('Your subscription to **:product** is now active.', ['product' => $productName]))
+            ->line(__('Plan: **:product** — :amount/:interval', ['product' => $productName, 'amount' => $amount, 'interval' => $interval]))
+            ->action(__('Go to Dashboard'), route('settings.billing'))
+            ->line(__('Thank you for subscribing!'));
     }
 
     /**
