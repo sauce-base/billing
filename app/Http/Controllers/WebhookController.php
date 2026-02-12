@@ -4,6 +4,7 @@ namespace Modules\Billing\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 use Modules\Billing\Services\BillingService;
 
 class WebhookController
@@ -14,8 +15,17 @@ class WebhookController
 
     public function handle(string $provider, Request $request): Response
     {
-        $this->billingService->handleWebhook($provider, $request);
+        try {
+            $this->billingService->handleWebhook($provider, $request);
 
-        return response()->noContent(200);
+            return response()->noContent(200);
+        } catch (\Throwable $e) {
+            Log::error('Webhook processing failed', [
+                'provider' => $provider,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->noContent(500);
+        }
     }
 }

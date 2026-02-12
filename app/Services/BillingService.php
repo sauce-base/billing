@@ -5,6 +5,7 @@ namespace Modules\Billing\Services;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Modules\Billing\Data\CheckoutData;
 use Modules\Billing\Data\CheckoutResultData;
 use Modules\Billing\Data\WebhookData;
@@ -66,6 +67,8 @@ class BillingService
         $gateway = $this->manager->driver($provider);
         $webhook = $gateway->verifyAndParseWebhook($request);
 
+        Log::info('Webhook received', ['provider' => $provider, 'type' => $webhook->type?->value ?? 'unmapped']);
+
         match ($webhook->type) {
             WebhookEventType::CheckoutCompleted => $this->onCheckoutCompleted($webhook),
             WebhookEventType::SubscriptionUpdated => $this->onSubscriptionUpdated($webhook),
@@ -77,9 +80,14 @@ class BillingService
         };
     }
 
-    public function cancel(Subscription $subscription, bool $immediately = false): void
+    public function cancel(Subscription $subscription, bool $immediately = false): ?\DateTimeInterface
     {
-        $this->manager->driver()->cancelSubscription($subscription, $immediately);
+        return $this->manager->driver()->cancelSubscription($subscription, $immediately);
+    }
+
+    public function resume(Subscription $subscription): void
+    {
+        $this->manager->driver()->resumeSubscription($subscription);
     }
 
     public function getManagementUrl(User $user): string
@@ -213,13 +221,16 @@ class BillingService
         $subscription = Subscription::where('provider_subscription_id', $payload['id'])->first();
 
         if (! $subscription) {
-            return;
+            Log::warning('Subscription not found for update', ['provider_subscription_id' => $payload['id']]);
+
+            throw new \RuntimeException("Subscription not found: {$payload['id']}");
         }
 
         $status = match ($payload['status'] ?? null) {
-            'active' => SubscriptionStatus::Active,
-            'past_due' => SubscriptionStatus::PastDue,
-            'canceled' => SubscriptionStatus::Cancelled,
+            'active', 'trialing' => SubscriptionStatus::Active,
+            'past_due', 'unpaid' => SubscriptionStatus::PastDue,
+            'canceled', 'incomplete_expired' => SubscriptionStatus::Cancelled,
+            'incomplete', 'paused' => SubscriptionStatus::Pending,
             default => $subscription->status,
         };
 
@@ -240,12 +251,19 @@ class BillingService
 
         if (isset($payload['cancel_at_period_end']) && $payload['cancel_at_period_end']) {
             $updates['cancelled_at'] = now();
-            $updates['ends_at'] = isset($payload['current_period_end'])
-                ? Carbon::createFromTimestamp($payload['current_period_end'])
-                : null;
+            $endsAt = $payload['current_period_end'] ?? $payload['cancel_at'] ?? null;
+            $updates['ends_at'] = $endsAt ? Carbon::createFromTimestamp($endsAt) : null;
+        } elseif (isset($payload['cancel_at']) && $payload['cancel_at']) {
+            $updates['cancelled_at'] = now();
+            $updates['ends_at'] = Carbon::createFromTimestamp($payload['cancel_at']);
+        } elseif (isset($payload['cancel_at_period_end']) && ! $payload['cancel_at_period_end'] && empty($payload['cancel_at'])) {
+            $updates['cancelled_at'] = null;
+            $updates['ends_at'] = null;
         }
 
         $subscription->update($updates);
+
+        Log::info('Subscription updated', ['subscription_id' => $subscription->id, 'status' => $status->value]);
 
         event(new SubscriptionUpdated($subscription));
     }
@@ -258,7 +276,9 @@ class BillingService
         $subscription = Subscription::where('provider_subscription_id', $payload['id'])->first();
 
         if (! $subscription) {
-            return;
+            Log::warning('Subscription not found for deletion', ['provider_subscription_id' => $payload['id']]);
+
+            throw new \RuntimeException("Subscription not found: {$payload['id']}");
         }
 
         $subscription->update([
@@ -266,6 +286,8 @@ class BillingService
             'cancelled_at' => now(),
             'ends_at' => now(),
         ]);
+
+        Log::info('Subscription cancelled', ['subscription_id' => $subscription->id]);
 
         event(new SubscriptionCancelled($subscription));
     }
@@ -281,8 +303,9 @@ class BillingService
             return;
         }
 
-        $subscription = isset($payload['subscription'])
-            ? Subscription::where('provider_subscription_id', $payload['subscription'])->first()
+        $subscriptionId = $payload['subscription'] ?? $payload['parent']['subscription_details']['subscription'] ?? null;
+        $subscription = $subscriptionId
+            ? Subscription::where('provider_subscription_id', $subscriptionId)->first()
             : null;
 
         $pm = ($payload['default_payment_method'] ?? null)
@@ -314,8 +337,9 @@ class BillingService
             return;
         }
 
-        $subscription = isset($payload['subscription'])
-            ? Subscription::where('provider_subscription_id', $payload['subscription'])->first()
+        $subscriptionId = $payload['subscription'] ?? $payload['parent']['subscription_details']['subscription'] ?? null;
+        $subscription = $subscriptionId
+            ? Subscription::where('provider_subscription_id', $subscriptionId)->first()
             : null;
 
         $pm = ($payload['default_payment_method'] ?? null)
@@ -350,8 +374,9 @@ class BillingService
             return;
         }
 
-        $subscription = isset($payload['subscription'])
-            ? Subscription::where('provider_subscription_id', $payload['subscription'])->first()
+        $subscriptionId = $payload['subscription'] ?? $payload['parent']['subscription_details']['subscription'] ?? null;
+        $subscription = $subscriptionId
+            ? Subscription::where('provider_subscription_id', $subscriptionId)->first()
             : null;
 
         $invoice = Invoice::updateOrCreate(
@@ -370,6 +395,16 @@ class BillingService
                 'pdf_url' => $payload['invoice_pdf'] ?? null,
             ],
         );
+
+        if ($subscription) {
+            $lineItem = $payload['lines']['data'][0] ?? null;
+            if ($lineItem && isset($lineItem['period'])) {
+                $subscription->update([
+                    'current_period_starts_at' => Carbon::createFromTimestamp($lineItem['period']['start']),
+                    'current_period_ends_at' => Carbon::createFromTimestamp($lineItem['period']['end']),
+                ]);
+            }
+        }
 
         event(new InvoicePaid($invoice));
     }

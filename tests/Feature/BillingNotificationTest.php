@@ -10,6 +10,8 @@ use Modules\Billing\Events\PaymentFailed;
 use Modules\Billing\Events\PaymentSucceeded;
 use Modules\Billing\Events\SubscriptionCancelled;
 use Modules\Billing\Events\SubscriptionCreated;
+use Modules\Billing\Events\SubscriptionResumed;
+use Modules\Billing\Events\SubscriptionUpdated;
 use Modules\Billing\Models\Customer;
 use Modules\Billing\Models\Invoice;
 use Modules\Billing\Models\Payment;
@@ -20,6 +22,8 @@ use Modules\Billing\Notifications\PaymentFailedNotification;
 use Modules\Billing\Notifications\PaymentSucceededNotification;
 use Modules\Billing\Notifications\SubscriptionCancelledNotification;
 use Modules\Billing\Notifications\SubscriptionCreatedNotification;
+use Modules\Billing\Notifications\SubscriptionResumedNotification;
+use Modules\Billing\Notifications\SubscriptionUpdatedNotification;
 use Tests\TestCase;
 
 class BillingNotificationTest extends TestCase
@@ -275,6 +279,95 @@ class BillingNotificationTest extends TestCase
         $this->assertCount(2, $mail->introLines);
     }
 
+    public function test_subscription_resumed_sends_notification(): void
+    {
+        $subscription = Subscription::factory()->create([
+            'customer_id' => $this->customer->id,
+        ]);
+
+        event(new SubscriptionResumed($subscription));
+
+        Notification::assertSentTo($this->user, SubscriptionResumedNotification::class);
+    }
+
+    public function test_subscription_resumed_email_contains_product_name(): void
+    {
+        $product = Product::factory()->create(['name' => 'Pro Plan']);
+        $price = Price::factory()->create(['product_id' => $product->id]);
+        $subscription = Subscription::factory()->create([
+            'customer_id' => $this->customer->id,
+            'price_id' => $price->id,
+        ]);
+
+        $notification = new SubscriptionResumedNotification($subscription);
+        $mail = $notification->toMail($this->user);
+
+        $this->assertEquals('Subscription Resumed', $mail->subject);
+        $this->assertStringContainsString('Pro Plan', $mail->introLines[0]);
+        $this->assertEquals('Manage Billing', $mail->actionText);
+    }
+
+    public function test_subscription_updated_sends_notification_for_cancellation_pending(): void
+    {
+        $subscription = Subscription::factory()->create([
+            'customer_id' => $this->customer->id,
+            'cancelled_at' => now(),
+            'ends_at' => now()->addDays(30),
+        ]);
+
+        event(new SubscriptionUpdated($subscription));
+
+        Notification::assertSentTo($this->user, SubscriptionUpdatedNotification::class);
+    }
+
+    public function test_subscription_updated_skips_notification_for_active_subscription(): void
+    {
+        $subscription = Subscription::factory()->create([
+            'customer_id' => $this->customer->id,
+        ]);
+
+        event(new SubscriptionUpdated($subscription));
+
+        Notification::assertNotSentTo($this->user, SubscriptionUpdatedNotification::class);
+    }
+
+    public function test_subscription_updated_email_shows_cancellation_pending(): void
+    {
+        $product = Product::factory()->create(['name' => 'Pro Plan']);
+        $price = Price::factory()->create(['product_id' => $product->id]);
+        $endsAt = now()->addDays(30);
+        $subscription = Subscription::factory()->create([
+            'customer_id' => $this->customer->id,
+            'price_id' => $price->id,
+            'cancelled_at' => now(),
+            'ends_at' => $endsAt,
+        ]);
+
+        $notification = new SubscriptionUpdatedNotification($subscription);
+        $mail = $notification->toMail($this->user);
+
+        $this->assertEquals('Subscription Cancellation Scheduled', $mail->subject);
+        $this->assertStringContainsString('Pro Plan', $mail->introLines[0]);
+        $this->assertStringContainsString($endsAt->format('F j, Y'), $mail->introLines[0]);
+    }
+
+    public function test_subscription_updated_email_shows_past_due(): void
+    {
+        $product = Product::factory()->create(['name' => 'Pro Plan']);
+        $price = Price::factory()->create(['product_id' => $product->id]);
+        $subscription = Subscription::factory()->pastDue()->create([
+            'customer_id' => $this->customer->id,
+            'price_id' => $price->id,
+        ]);
+
+        $notification = new SubscriptionUpdatedNotification($subscription);
+        $mail = $notification->toMail($this->user);
+
+        $this->assertEquals('Subscription Past Due', $mail->subject);
+        $this->assertStringContainsString('Pro Plan', $mail->introLines[0]);
+        $this->assertStringContainsString('past due', $mail->introLines[0]);
+    }
+
     public function test_notifications_use_mail_channel(): void
     {
         $subscription = Subscription::factory()->create(['customer_id' => $this->customer->id]);
@@ -282,6 +375,8 @@ class BillingNotificationTest extends TestCase
 
         $this->assertEquals(['mail'], (new SubscriptionCreatedNotification($subscription))->via($this->user));
         $this->assertEquals(['mail'], (new SubscriptionCancelledNotification($subscription))->via($this->user));
+        $this->assertEquals(['mail'], (new SubscriptionResumedNotification($subscription))->via($this->user));
+        $this->assertEquals(['mail'], (new SubscriptionUpdatedNotification($subscription))->via($this->user));
         $this->assertEquals(['mail'], (new PaymentSucceededNotification($payment))->via($this->user));
         $this->assertEquals(['mail'], (new PaymentFailedNotification($payment))->via($this->user));
     }

@@ -16,7 +16,9 @@ interface PaymentGatewayInterface
 
     public function createCheckoutSession(CheckoutData $data): CheckoutResultData;
 
-    public function cancelSubscription(Subscription $subscription, bool $immediately = false): void;
+    public function cancelSubscription(Subscription $subscription, bool $immediately = false): ?\DateTimeInterface;
+
+    public function resumeSubscription(Subscription $subscription): void;
 
     public function getManagementUrl(Customer $customer): string;
 

@@ -37,7 +37,7 @@ class SubscriptionCreatedNotification extends Notification
             ->greeting("Hello {$notifiable->name},")
             ->line("Your subscription to **{$productName}** is now active.")
             ->line("Plan: **{$productName}** — {$currency} {$amount}/{$interval}")
-            ->action('Go to Dashboard', route('billing.index'))
+            ->action('Go to Dashboard', route('settings.billing'))
             ->line('Thank you for subscribing!');
     }
 

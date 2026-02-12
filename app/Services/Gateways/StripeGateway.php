@@ -2,6 +2,7 @@
 
 namespace Modules\Billing\Services\Gateways;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutData;
@@ -71,22 +72,35 @@ class StripeGateway implements PaymentGatewayInterface
         );
     }
 
-    public function cancelSubscription(Subscription $subscription, bool $immediately = false): void
+    public function cancelSubscription(Subscription $subscription, bool $immediately = false): ?\DateTimeInterface
     {
         if ($immediately) {
             $this->stripe->subscriptions->cancel($subscription->provider_subscription_id);
-        } else {
-            $this->stripe->subscriptions->update($subscription->provider_subscription_id, [
-                'cancel_at_period_end' => true,
-            ]);
+
+            return null;
         }
+
+        $stripeSub = $this->stripe->subscriptions->update($subscription->provider_subscription_id, [
+            'cancel_at_period_end' => true,
+        ]);
+
+        $endsAt = $stripeSub->current_period_end ?? $stripeSub->cancel_at;
+
+        return $endsAt ? Carbon::createFromTimestamp($endsAt) : null;
+    }
+
+    public function resumeSubscription(Subscription $subscription): void
+    {
+        $this->stripe->subscriptions->update($subscription->provider_subscription_id, [
+            'cancel_at_period_end' => false,
+        ]);
     }
 
     public function getManagementUrl(Customer $customer): string
     {
         $session = $this->stripe->billingPortal->sessions->create([
             'customer' => $customer->provider_customer_id,
-            'return_url' => route('billing.index'),
+            'return_url' => route('settings.billing'),
         ]);
 
         return $session->url;

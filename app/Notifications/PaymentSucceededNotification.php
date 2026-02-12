@@ -36,7 +36,7 @@ class PaymentSucceededNotification extends Notification
             ?? 'your subscription';
 
         $invoice = Invoice::where('payment_id', $this->payment->id)->first();
-        $actionUrl = $invoice?->hosted_invoice_url ?? route('billing.index');
+        $actionUrl = $invoice?->hosted_invoice_url ?? route('settings.billing');
         $actionText = $invoice?->hosted_invoice_url ? 'View Invoice' : 'Go to Billing';
 
         return (new MailMessage)

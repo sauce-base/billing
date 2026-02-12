@@ -2,9 +2,11 @@
 
 namespace Modules\Billing\Providers;
 
+use App\Models\User;
 use App\Providers\ModuleServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
+use Modules\Billing\Models\Customer;
 use Modules\Billing\Services\BillingService;
 use Modules\Billing\Services\PaymentGatewayManager;
 
@@ -34,6 +36,10 @@ class BillingServiceProvider extends ModuleServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        User::resolveRelationUsing('billingCustomer', function (User $user) {
+            return $user->hasOne(Customer::class);
+        });
 
         // Register policies
         $this->registerPolicies();

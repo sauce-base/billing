@@ -56,7 +56,7 @@ class CheckoutController
         $result = $this->billingService->processCheckout(
             session: $checkoutSession,
             user: $request->user(),
-            successUrl: route('billing.index'),
+            successUrl: route('settings.billing'),
             cancelUrl: route('billing.checkout', $checkoutSession),
             billingDetails: $validated,
         );

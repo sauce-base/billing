@@ -7,7 +7,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Modules\Billing\Models\Subscription;
 
-class SubscriptionCancelledNotification extends Notification
+class SubscriptionResumedNotification extends Notification
 {
     use Queueable;
 
@@ -28,15 +28,13 @@ class SubscriptionCancelledNotification extends Notification
         // TODO: translate
 
         $productName = $this->subscription->price?->product?->name ?? 'your plan';
-        $endsAt = $this->subscription->ends_at?->format('F j, Y') ?? 'the end of your billing period';
 
         return (new MailMessage)
-            ->subject('Subscription Cancelled')
+            ->subject('Subscription Resumed')
             ->greeting("Hello {$notifiable->name},")
-            ->line("Your subscription to **{$productName}** has been cancelled.")
-            ->line("You will continue to have access until **{$endsAt}**.")
+            ->line("Your subscription to **{$productName}** has been resumed.")
             ->action('Manage Billing', route('settings.billing'))
-            ->line('We hope to see you again!');
+            ->line('Welcome back!');
     }
 
     /**

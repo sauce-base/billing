@@ -43,7 +43,7 @@ class PaymentFailedNotification extends Notification
 
         return $message
             ->line('Please update your payment method to avoid service interruption.')
-            ->action('Update Payment Method', route('billing.index'));
+            ->action('Update Payment Method', route('settings.billing'));
     }
 
     /**

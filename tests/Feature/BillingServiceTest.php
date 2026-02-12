@@ -267,6 +267,164 @@ class BillingServiceTest extends TestCase
         Event::assertDispatched(SubscriptionUpdated::class);
     }
 
+    public function test_webhook_subscription_updated_handles_cancel_at_scheduled_cancellation(): void
+    {
+        Event::fake([SubscriptionUpdated::class]);
+
+        $subscription = Subscription::factory()->create([
+            'provider_subscription_id' => 'sub_test_cancel_at',
+            'status' => SubscriptionStatus::Active,
+        ]);
+
+        $cancelAt = now()->addYear()->getTimestamp();
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::SubscriptionUpdated,
+            provider: 'stripe',
+            providerEventId: 'evt_test_cancel_at',
+            payload: [
+                'id' => 'sub_test_cancel_at',
+                'status' => 'active',
+                'cancel_at_period_end' => false,
+                'cancel_at' => $cancelAt,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $subscription->refresh();
+        $this->assertEquals(SubscriptionStatus::Active, $subscription->status);
+        $this->assertNotNull($subscription->cancelled_at);
+        $this->assertNotNull($subscription->ends_at);
+        $this->assertEquals($cancelAt, $subscription->ends_at->getTimestamp());
+
+        Event::assertDispatched(SubscriptionUpdated::class);
+    }
+
+    public function test_webhook_subscription_updated_cancel_at_period_end_falls_back_to_cancel_at(): void
+    {
+        Event::fake([SubscriptionUpdated::class]);
+
+        $subscription = Subscription::factory()->create([
+            'provider_subscription_id' => 'sub_test_cancel_fallback',
+            'status' => SubscriptionStatus::Active,
+        ]);
+
+        $cancelAt = now()->addMonth()->getTimestamp();
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::SubscriptionUpdated,
+            provider: 'stripe',
+            providerEventId: 'evt_test_cancel_fallback',
+            payload: [
+                'id' => 'sub_test_cancel_fallback',
+                'status' => 'active',
+                'cancel_at_period_end' => true,
+                'cancel_at' => $cancelAt,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $subscription->refresh();
+        $this->assertEquals(SubscriptionStatus::Active, $subscription->status);
+        $this->assertNotNull($subscription->cancelled_at);
+        $this->assertNotNull($subscription->ends_at);
+        $this->assertEquals($cancelAt, $subscription->ends_at->getTimestamp());
+
+        Event::assertDispatched(SubscriptionUpdated::class);
+    }
+
+    public function test_webhook_subscription_updated_throws_when_subscription_not_found(): void
+    {
+        $webhook = new WebhookData(
+            type: WebhookEventType::SubscriptionUpdated,
+            provider: 'stripe',
+            providerEventId: 'evt_test_not_found',
+            payload: [
+                'id' => 'sub_nonexistent',
+                'status' => 'active',
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Subscription not found: sub_nonexistent');
+
+        $this->billingService->handleWebhook('stripe', request());
+    }
+
+    public function test_webhook_subscription_deleted_throws_when_subscription_not_found(): void
+    {
+        $webhook = new WebhookData(
+            type: WebhookEventType::SubscriptionDeleted,
+            provider: 'stripe',
+            providerEventId: 'evt_test_not_found',
+            payload: [
+                'id' => 'sub_nonexistent',
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Subscription not found: sub_nonexistent');
+
+        $this->billingService->handleWebhook('stripe', request());
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('stripeStatusMappingProvider')]
+    public function test_webhook_subscription_updated_maps_stripe_statuses(string $stripeStatus, SubscriptionStatus $expectedStatus): void
+    {
+        Event::fake([SubscriptionUpdated::class]);
+
+        $subscription = Subscription::factory()->create([
+            'provider_subscription_id' => 'sub_test_status_map',
+            'status' => SubscriptionStatus::Active,
+        ]);
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::SubscriptionUpdated,
+            provider: 'stripe',
+            providerEventId: 'evt_test_status',
+            payload: [
+                'id' => 'sub_test_status_map',
+                'status' => $stripeStatus,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $subscription->refresh();
+        $this->assertEquals($expectedStatus, $subscription->status);
+
+        Event::assertDispatched(SubscriptionUpdated::class);
+    }
+
+    /**
+     * @return array<string, array{string, SubscriptionStatus}>
+     */
+    public static function stripeStatusMappingProvider(): array
+    {
+        return [
+            'active' => ['active', SubscriptionStatus::Active],
+            'trialing' => ['trialing', SubscriptionStatus::Active],
+            'past_due' => ['past_due', SubscriptionStatus::PastDue],
+            'unpaid' => ['unpaid', SubscriptionStatus::PastDue],
+            'canceled' => ['canceled', SubscriptionStatus::Cancelled],
+            'incomplete_expired' => ['incomplete_expired', SubscriptionStatus::Cancelled],
+            'incomplete' => ['incomplete', SubscriptionStatus::Pending],
+            'paused' => ['paused', SubscriptionStatus::Pending],
+        ];
+    }
+
     public function test_webhook_subscription_deleted_cancels_subscription(): void
     {
         Event::fake([SubscriptionCancelled::class]);
@@ -431,6 +589,132 @@ class BillingServiceTest extends TestCase
             'number' => 'INV-001',
             'total' => 2900,
         ]);
+
+        Event::assertDispatched(InvoicePaid::class);
+    }
+
+    public function test_webhook_invoice_paid_syncs_subscription_period_from_line_items(): void
+    {
+        Event::fake([InvoicePaid::class]);
+
+        $customer = Customer::factory()->create([
+            'provider_customer_id' => 'cus_test_inv_period',
+        ]);
+
+        $subscription = Subscription::factory()->create([
+            'customer_id' => $customer->id,
+            'provider_subscription_id' => 'sub_test_inv_period',
+            'current_period_starts_at' => null,
+            'current_period_ends_at' => null,
+        ]);
+
+        $periodStart = 1770827927;
+        $periodEnd = 1773247127;
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::InvoicePaid,
+            provider: 'stripe',
+            providerEventId: 'evt_test_inv_period',
+            payload: [
+                'id' => 'in_test_inv_period',
+                'customer' => 'cus_test_inv_period',
+                'subscription' => 'sub_test_inv_period',
+                'number' => 'INV-002',
+                'currency' => 'usd',
+                'subtotal' => 2900,
+                'tax' => 0,
+                'total' => 2900,
+                'hosted_invoice_url' => 'https://stripe.com/invoice/456',
+                'invoice_pdf' => 'https://stripe.com/invoice/456/pdf',
+                'lines' => [
+                    'data' => [
+                        [
+                            'period' => [
+                                'start' => $periodStart,
+                                'end' => $periodEnd,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $subscription->refresh();
+        $this->assertNotNull($subscription->current_period_starts_at);
+        $this->assertNotNull($subscription->current_period_ends_at);
+        $this->assertEquals($periodStart, $subscription->current_period_starts_at->getTimestamp());
+        $this->assertEquals($periodEnd, $subscription->current_period_ends_at->getTimestamp());
+
+        Event::assertDispatched(InvoicePaid::class);
+    }
+
+    public function test_webhook_invoice_paid_resolves_subscription_from_parent_field(): void
+    {
+        Event::fake([InvoicePaid::class]);
+
+        $customer = Customer::factory()->create([
+            'provider_customer_id' => 'cus_test_inv_parent',
+        ]);
+
+        $subscription = Subscription::factory()->create([
+            'customer_id' => $customer->id,
+            'provider_subscription_id' => 'sub_test_inv_parent',
+            'current_period_starts_at' => null,
+            'current_period_ends_at' => null,
+        ]);
+
+        $periodStart = 1770827927;
+        $periodEnd = 1773247127;
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::InvoicePaid,
+            provider: 'stripe',
+            providerEventId: 'evt_test_inv_parent',
+            payload: [
+                'id' => 'in_test_inv_parent',
+                'customer' => 'cus_test_inv_parent',
+                'parent' => [
+                    'subscription_details' => [
+                        'subscription' => 'sub_test_inv_parent',
+                    ],
+                ],
+                'number' => 'INV-003',
+                'currency' => 'eur',
+                'subtotal' => 2900,
+                'tax' => 0,
+                'total' => 2900,
+                'hosted_invoice_url' => 'https://stripe.com/invoice/789',
+                'invoice_pdf' => 'https://stripe.com/invoice/789/pdf',
+                'lines' => [
+                    'data' => [
+                        [
+                            'period' => [
+                                'start' => $periodStart,
+                                'end' => $periodEnd,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $this->assertDatabaseHas('invoices', [
+            'customer_id' => $customer->id,
+            'subscription_id' => $subscription->id,
+            'provider_invoice_id' => 'in_test_inv_parent',
+        ]);
+
+        $subscription->refresh();
+        $this->assertNotNull($subscription->current_period_ends_at);
+        $this->assertEquals($periodEnd, $subscription->current_period_ends_at->getTimestamp());
 
         Event::assertDispatched(InvoicePaid::class);
     }
