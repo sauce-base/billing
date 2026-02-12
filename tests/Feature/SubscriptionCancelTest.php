@@ -15,6 +15,20 @@ class SubscriptionCancelTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** @var PaymentGatewayInterface&\PHPUnit\Framework\MockObject\MockObject */
+    private PaymentGatewayInterface $gateway;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->gateway = $this->createMock(PaymentGatewayInterface::class);
+
+        $manager = $this->createMock(PaymentGatewayManager::class);
+        $manager->method('driver')->willReturn($this->gateway);
+        $this->app->instance(PaymentGatewayManager::class, $manager);
+    }
+
     public function test_cancel_subscription_requires_auth(): void
     {
         $response = $this->post(route('billing.subscription.cancel'));
@@ -31,14 +45,9 @@ class SubscriptionCancelTest extends TestCase
             'status' => SubscriptionStatus::Active,
         ]);
 
-        $gateway = $this->createMock(PaymentGatewayInterface::class);
-        $gateway->expects($this->once())
+        $this->gateway->expects($this->once())
             ->method('cancelSubscription')
             ->with($this->anything(), false);
-
-        $manager = $this->createMock(PaymentGatewayManager::class);
-        $manager->method('driver')->willReturn($gateway);
-        $this->app->instance(PaymentGatewayManager::class, $manager);
 
         $response = $this->actingAs($user)->post(route('billing.subscription.cancel'));
 
@@ -55,13 +64,8 @@ class SubscriptionCancelTest extends TestCase
             'current_period_ends_at' => now()->addMonth(),
         ]);
 
-        $gateway = $this->createMock(PaymentGatewayInterface::class);
-        $gateway->expects($this->once())
+        $this->gateway->expects($this->once())
             ->method('cancelSubscription');
-
-        $manager = $this->createMock(PaymentGatewayManager::class);
-        $manager->method('driver')->willReturn($gateway);
-        $this->app->instance(PaymentGatewayManager::class, $manager);
 
         $this->actingAs($user)->post(route('billing.subscription.cancel'));
 
@@ -87,12 +91,7 @@ class SubscriptionCancelTest extends TestCase
 
         $periodEnd = now()->addMonth()->startOfDay();
 
-        $gateway = $this->createMock(PaymentGatewayInterface::class);
-        $gateway->method('cancelSubscription')->willReturn($periodEnd);
-
-        $manager = $this->createMock(PaymentGatewayManager::class);
-        $manager->method('driver')->willReturn($gateway);
-        $this->app->instance(PaymentGatewayManager::class, $manager);
+        $this->gateway->method('cancelSubscription')->willReturn($periodEnd);
 
         $this->actingAs($user)->post(route('billing.subscription.cancel'));
 

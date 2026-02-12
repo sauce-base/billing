@@ -4,6 +4,11 @@ version: '3'
 tasks:
     # ── Webhook ───────────────────────────────────────────────────
 
-    stripe:listen:
+    webhook:stripe:listen:
         desc: Listen to Stripe webhooks and forward to local endpoint
         cmd: stripe listen --forward-to https://localhost/billing/webhooks/stripe
+
+    # ── Testing ───────────────────────────────────────────────────
+    test:php: 
+        desc: Run PHPUnit tests for Billing module
+        cmd: php artisan test --testsuite=Modules --filter=Billing

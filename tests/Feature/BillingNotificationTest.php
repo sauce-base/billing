@@ -96,7 +96,7 @@ class BillingNotificationTest extends TestCase
         $notification = new SubscriptionCreatedNotification($subscription);
         $mail = $notification->toMail($this->user);
 
-        $this->assertStringContainsString('USD 9.99/month', $mail->introLines[1]);
+        $this->assertStringContainsString('$9.99/month', $mail->introLines[1]);
     }
 
     public function test_subscription_cancelled_sends_notification(): void
@@ -152,7 +152,7 @@ class BillingNotificationTest extends TestCase
         $mail = $notification->toMail($this->user);
 
         $this->assertEquals('Payment Received', $mail->subject);
-        $this->assertStringContainsString('USD 29.99', $mail->introLines[0]);
+        $this->assertStringContainsString('$29.99', $mail->introLines[0]);
     }
 
     public function test_payment_succeeded_email_shows_one_time_purchase_for_non_subscription(): void
@@ -259,7 +259,7 @@ class BillingNotificationTest extends TestCase
         $mail = $notification->toMail($this->user);
 
         $this->assertEquals('Payment Failed', $mail->subject);
-        $this->assertStringContainsString('USD 49.99', $mail->introLines[0]);
+        $this->assertStringContainsString('$49.99', $mail->introLines[0]);
         $this->assertStringContainsString('Your card was declined.', $mail->introLines[1]);
         $this->assertEquals('Update Payment Method', $mail->actionText);
     }

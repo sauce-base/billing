@@ -22,6 +22,7 @@ use Modules\Billing\Events\SubscriptionCreated;
 use Modules\Billing\Events\SubscriptionUpdated;
 use Modules\Billing\Models\CheckoutSession;
 use Modules\Billing\Models\Customer;
+use Modules\Billing\Models\PaymentMethod;
 use Modules\Billing\Models\Price;
 use Modules\Billing\Models\Subscription;
 use Modules\Billing\Services\BillingService;
@@ -717,5 +718,301 @@ class BillingServiceTest extends TestCase
         $this->assertEquals($periodEnd, $subscription->current_period_ends_at->getTimestamp());
 
         Event::assertDispatched(InvoicePaid::class);
+    }
+
+    public function test_webhook_payment_succeeded_ignores_unknown_customer(): void
+    {
+        Event::fake([PaymentSucceeded::class]);
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::PaymentSucceeded,
+            provider: 'stripe',
+            providerEventId: 'evt_no_customer',
+            payload: [
+                'id' => 'in_unknown',
+                'customer' => 'cus_nonexistent',
+                'currency' => 'usd',
+                'amount_paid' => 1000,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $this->assertDatabaseCount('payments', 0);
+        Event::assertNotDispatched(PaymentSucceeded::class);
+    }
+
+    public function test_webhook_payment_failed_ignores_unknown_customer(): void
+    {
+        Event::fake([PaymentFailed::class]);
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::PaymentFailed,
+            provider: 'stripe',
+            providerEventId: 'evt_no_customer_fail',
+            payload: [
+                'id' => 'in_unknown_fail',
+                'customer' => 'cus_nonexistent',
+                'currency' => 'usd',
+                'amount_due' => 1000,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $this->assertDatabaseCount('payments', 0);
+        Event::assertNotDispatched(PaymentFailed::class);
+    }
+
+    public function test_webhook_invoice_paid_ignores_unknown_customer(): void
+    {
+        Event::fake([InvoicePaid::class]);
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::InvoicePaid,
+            provider: 'stripe',
+            providerEventId: 'evt_no_customer_inv',
+            payload: [
+                'id' => 'in_unknown_inv',
+                'customer' => 'cus_nonexistent',
+                'currency' => 'usd',
+                'subtotal' => 1000,
+                'tax' => 0,
+                'total' => 1000,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $this->assertDatabaseCount('invoices', 0);
+        Event::assertNotDispatched(InvoicePaid::class);
+    }
+
+    public function test_webhook_checkout_completed_ignores_unknown_session(): void
+    {
+        Event::fake([CheckoutCompleted::class]);
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::CheckoutCompleted,
+            provider: 'stripe',
+            providerEventId: 'evt_unknown_session',
+            payload: [
+                'id' => 'cs_nonexistent',
+                'subscription' => 'sub_test',
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $this->assertDatabaseCount('subscriptions', 0);
+        Event::assertNotDispatched(CheckoutCompleted::class);
+    }
+
+    public function test_webhook_unmapped_type_does_nothing(): void
+    {
+        $webhook = new WebhookData(
+            type: null,
+            provider: 'stripe',
+            providerEventId: 'evt_unmapped',
+            payload: ['id' => 'obj_123'],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $this->assertTrue(true);
+    }
+
+    public function test_webhook_invoice_paid_is_idempotent(): void
+    {
+        Event::fake([InvoicePaid::class]);
+
+        $customer = Customer::factory()->create(['provider_customer_id' => 'cus_idempotent']);
+
+        $payload = [
+            'id' => 'in_idempotent',
+            'customer' => 'cus_idempotent',
+            'number' => 'INV-IDEM',
+            'currency' => 'usd',
+            'subtotal' => 2900,
+            'tax' => 0,
+            'total' => 2900,
+            'hosted_invoice_url' => 'https://stripe.com/invoice/idem',
+            'invoice_pdf' => 'https://stripe.com/invoice/idem/pdf',
+        ];
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::InvoicePaid,
+            provider: 'stripe',
+            providerEventId: 'evt_idem_1',
+            payload: $payload,
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+        $this->billingService->handleWebhook('stripe', request());
+
+        $this->assertDatabaseCount('invoices', 1);
+        $this->assertDatabaseHas('invoices', [
+            'provider_invoice_id' => 'in_idempotent',
+            'customer_id' => $customer->id,
+        ]);
+    }
+
+    public function test_process_checkout_updates_existing_customer(): void
+    {
+        $user = User::factory()->create();
+        $existingCustomer = Customer::create([
+            'user_id' => $user->id,
+            'provider_customer_id' => 'cus_existing',
+            'name' => 'Old Name',
+            'email' => 'old@example.com',
+        ]);
+        $price = Price::factory()->create();
+        $session = CheckoutSession::create([
+            'price_id' => $price->id,
+            'status' => CheckoutSessionStatus::Pending,
+            'expires_at' => now()->addHours(24),
+        ]);
+
+        $this->gateway->method('createCheckoutSession')->willReturn(
+            new CheckoutResultData(sessionId: 'cs_update', url: 'https://stripe.com/checkout', provider: 'stripe'),
+        );
+
+        $this->billingService->processCheckout($session, $user, 'https://example.com/success', 'https://example.com/cancel', [
+            'name' => 'New Name',
+            'email' => 'new@example.com',
+        ]);
+
+        $existingCustomer->refresh();
+        $this->assertEquals('New Name', $existingCustomer->name);
+        $this->assertEquals('new@example.com', $existingCustomer->email);
+        $this->assertDatabaseCount('customers', 1);
+    }
+
+    public function test_ensure_payment_method_reuses_existing_default(): void
+    {
+        Event::fake([PaymentSucceeded::class]);
+
+        $customer = Customer::factory()->create(['provider_customer_id' => 'cus_pm_default']);
+
+        PaymentMethod::create([
+            'customer_id' => $customer->id,
+            'provider_payment_method_id' => 'pm_test_123',
+            'type' => 'card',
+            'card_brand' => 'visa',
+            'card_last_four' => '4242',
+            'card_exp_month' => 12,
+            'card_exp_year' => 2030,
+            'is_default' => true,
+        ]);
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::PaymentSucceeded,
+            provider: 'stripe',
+            providerEventId: 'evt_pm_reuse',
+            payload: [
+                'id' => 'in_pm_reuse',
+                'customer' => 'cus_pm_default',
+                'default_payment_method' => 'pm_test_123',
+                'payment_intent' => 'pi_pm_reuse',
+                'currency' => 'usd',
+                'amount_paid' => 500,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $this->assertDatabaseCount('payment_methods', 1);
+
+        $payment = \Modules\Billing\Models\Payment::where('provider_payment_id', 'pi_pm_reuse')->first();
+        $this->assertNotNull($payment->payment_method_id);
+    }
+
+    public function test_ensure_payment_method_swaps_default(): void
+    {
+        Event::fake([PaymentSucceeded::class]);
+
+        $customer = Customer::factory()->create(['provider_customer_id' => 'cus_pm_swap']);
+
+        $oldPm = PaymentMethod::create([
+            'customer_id' => $customer->id,
+            'provider_payment_method_id' => 'pm_old_default',
+            'type' => 'card',
+            'card_brand' => 'mastercard',
+            'card_last_four' => '5555',
+            'card_exp_month' => 6,
+            'card_exp_year' => 2028,
+            'is_default' => true,
+        ]);
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::PaymentSucceeded,
+            provider: 'stripe',
+            providerEventId: 'evt_pm_swap',
+            payload: [
+                'id' => 'in_pm_swap',
+                'customer' => 'cus_pm_swap',
+                'default_payment_method' => 'pm_new',
+                'payment_intent' => 'pi_pm_swap',
+                'currency' => 'usd',
+                'amount_paid' => 500,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $oldPm->refresh();
+        $this->assertFalse($oldPm->is_default);
+
+        $newPm = PaymentMethod::where('provider_payment_method_id', 'pm_test_123')->first();
+        $this->assertTrue($newPm->is_default);
+        $this->assertDatabaseCount('payment_methods', 2);
+    }
+
+    public function test_webhook_payment_succeeded_handles_zero_amount(): void
+    {
+        Event::fake([PaymentSucceeded::class]);
+
+        $customer = Customer::factory()->create(['provider_customer_id' => 'cus_zero']);
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::PaymentSucceeded,
+            provider: 'stripe',
+            providerEventId: 'evt_zero',
+            payload: [
+                'id' => 'in_zero',
+                'customer' => 'cus_zero',
+                'payment_intent' => 'pi_zero',
+                'currency' => 'usd',
+                'amount_paid' => 0,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $this->assertDatabaseHas('payments', [
+            'provider_payment_id' => 'pi_zero',
+            'amount' => 0,
+            'status' => PaymentStatus::Succeeded->value,
+        ]);
+
+        Event::assertDispatched(PaymentSucceeded::class);
     }
 }
