@@ -18,8 +18,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/billing/portal', BillingPortalController::class)->name('billing.portal');
     Route::post('/billing/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('billing.subscription.cancel');
     Route::post('/billing/subscription/resume', [SubscriptionController::class, 'resume'])->name('billing.subscription.resume');
-});
 
-Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings/billing', [SettingsBillingController::class, 'show'])->name('settings.billing');
 });
