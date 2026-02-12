@@ -165,6 +165,54 @@ class BillingService
         ]);
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function parseCurrency(array $payload): Currency
+    {
+        return Currency::tryFrom(strtoupper($payload['currency'] ?? '')) ?? Currency::default();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function resolveSubscriptionId(array $payload): ?string
+    {
+        return $payload['subscription'] ?? $payload['parent']['subscription_details']['subscription'] ?? null;
+    }
+
+    private function createPaymentFromWebhook(WebhookData $webhook, PaymentStatus $status, string $amountKey): ?Payment
+    {
+        /** @var array<string, mixed> $payload */
+        $payload = $webhook->payload;
+
+        $customer = Customer::where('provider_customer_id', $payload['customer'] ?? null)->first();
+
+        if (! $customer) {
+            return null;
+        }
+
+        $subscriptionId = $this->resolveSubscriptionId($payload);
+        $subscription = $subscriptionId
+            ? Subscription::where('provider_subscription_id', $subscriptionId)->first()
+            : null;
+
+        $pm = ($payload['default_payment_method'] ?? null)
+            ? $this->ensurePaymentMethod($customer, $payload['default_payment_method'], $webhook->provider)
+            : null;
+
+        return Payment::create([
+            'customer_id' => $customer->id,
+            'subscription_id' => $subscription?->id,
+            'payment_method_id' => $pm?->id,
+            'price_id' => $subscription?->price_id,
+            'provider_payment_id' => $payload['payment_intent'] ?? $payload['id'],
+            'currency' => $this->parseCurrency($payload),
+            'amount' => $payload[$amountKey] ?? 0,
+            'status' => $status,
+        ]);
+    }
+
     private function onCheckoutCompleted(WebhookData $webhook): void
     {
         /** @var array<string, mixed> $payload */
@@ -202,7 +250,7 @@ class BillingService
                 'price_id' => $session->price_id,
                 'payment_method_id' => $pm?->id,
                 'provider_payment_id' => $payload['payment_intent'],
-                'currency' => Currency::tryFrom(strtoupper($payload['currency'] ?? Currency::default())) ?? Currency::default(), // TODO: make it simpler
+                'currency' => $this->parseCurrency($payload),
                 'amount' => $payload['amount_total'] ?? 0,
                 'status' => PaymentStatus::Succeeded,
             ]);
@@ -294,70 +342,23 @@ class BillingService
 
     private function onPaymentSucceeded(WebhookData $webhook): void
     {
-        /** @var array<string, mixed> $payload */
-        $payload = $webhook->payload;
+        $payment = $this->createPaymentFromWebhook($webhook, PaymentStatus::Succeeded, 'amount_paid');
 
-        $customer = Customer::where('provider_customer_id', $payload['customer'] ?? null)->first();
-
-        if (! $customer) {
-            return;
+        if ($payment) {
+            event(new PaymentSucceeded($payment));
         }
-
-        $subscriptionId = $payload['subscription'] ?? $payload['parent']['subscription_details']['subscription'] ?? null;
-        $subscription = $subscriptionId
-            ? Subscription::where('provider_subscription_id', $subscriptionId)->first()
-            : null;
-
-        $pm = ($payload['default_payment_method'] ?? null)
-            ? $this->ensurePaymentMethod($customer, $payload['default_payment_method'], $webhook->provider)
-            : null;
-
-        $payment = Payment::create([
-            'customer_id' => $customer->id,
-            'subscription_id' => $subscription?->id,
-            'payment_method_id' => $pm?->id,
-            'price_id' => $subscription?->price_id,
-            'provider_payment_id' => $payload['payment_intent'] ?? $payload['id'],
-            'currency' => Currency::tryFrom(strtoupper($payload['currency'] ?? 'USD')) ?? Currency::USD,
-            'amount' => $payload['amount_paid'] ?? 0,
-            'status' => PaymentStatus::Succeeded,
-        ]);
-
-        event(new PaymentSucceeded($payment));
     }
 
     private function onPaymentFailed(WebhookData $webhook): void
     {
-        /** @var array<string, mixed> $payload */
-        $payload = $webhook->payload;
+        $payment = $this->createPaymentFromWebhook($webhook, PaymentStatus::Failed, 'amount_due');
 
-        $customer = Customer::where('provider_customer_id', $payload['customer'] ?? null)->first();
-
-        if (! $customer) {
+        if (! $payment) {
             return;
         }
 
-        $subscriptionId = $payload['subscription'] ?? $payload['parent']['subscription_details']['subscription'] ?? null;
-        $subscription = $subscriptionId
-            ? Subscription::where('provider_subscription_id', $subscriptionId)->first()
-            : null;
-
-        $pm = ($payload['default_payment_method'] ?? null)
-            ? $this->ensurePaymentMethod($customer, $payload['default_payment_method'], $webhook->provider)
-            : null;
-
-        $payment = Payment::create([
-            'customer_id' => $customer->id,
-            'subscription_id' => $subscription?->id,
-            'payment_method_id' => $pm?->id,
-            'provider_payment_id' => $payload['payment_intent'] ?? $payload['id'],
-            'currency' => Currency::tryFrom(strtoupper($payload['currency'] ?? 'USD')) ?? Currency::USD,
-            'amount' => $payload['amount_due'] ?? 0,
-            'status' => PaymentStatus::Failed,
-        ]);
-
-        if ($subscription) {
-            $subscription->update(['status' => SubscriptionStatus::PastDue]);
+        if ($payment->subscription_id) {
+            Subscription::where('id', $payment->subscription_id)->update(['status' => SubscriptionStatus::PastDue]);
         }
 
         event(new PaymentFailed($payment));
@@ -374,7 +375,7 @@ class BillingService
             return;
         }
 
-        $subscriptionId = $payload['subscription'] ?? $payload['parent']['subscription_details']['subscription'] ?? null;
+        $subscriptionId = $this->resolveSubscriptionId($payload);
         $subscription = $subscriptionId
             ? Subscription::where('provider_subscription_id', $subscriptionId)->first()
             : null;
@@ -385,7 +386,7 @@ class BillingService
                 'customer_id' => $customer->id,
                 'subscription_id' => $subscription?->id,
                 'number' => $payload['number'] ?? null,
-                'currency' => Currency::tryFrom(strtoupper($payload['currency'] ?? 'USD')) ?? Currency::USD,
+                'currency' => $this->parseCurrency($payload),
                 'subtotal' => $payload['subtotal'] ?? 0,
                 'tax' => $payload['tax'] ?? 0,
                 'total' => $payload['total'] ?? 0,
