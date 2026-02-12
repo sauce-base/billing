@@ -42,10 +42,18 @@ class PaymentSucceededNotification extends Notification
             ? __("We've received your payment of **:amount** for **:product** (one-time purchase).", ['amount' => $amount, 'product' => $productName])
             : __("We've received your payment of **:amount** for **:product**.", ['amount' => $amount, 'product' => $productName]);
 
-        return (new MailMessage)
+        $renewsAt = $this->payment->subscription?->current_period_ends_at;
+
+        $mail = (new MailMessage)
             ->subject(__('Payment Received'))
             ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
-            ->line($line)
+            ->line($line);
+
+        if (! $isOneTime && $renewsAt) {
+            $mail->line(__('Your next billing date is **:date**.', ['date' => $renewsAt->translatedFormat('F j, Y')]));
+        }
+
+        return $mail
             ->action($actionText, $actionUrl)
             ->line(__('Thank you for your payment!'));
     }

@@ -207,6 +207,7 @@ class BillingService
         if ($subscription) {
             $existing = Payment::where('subscription_id', $subscription->id)
                 ->whereNull('provider_payment_id')
+                ->where('created_at', '>=', now()->subMinutes(5))
                 ->first();
 
             if ($existing) {
@@ -262,6 +263,7 @@ class BillingService
             // Link any payment created by an earlier invoice webhook (race condition)
             $orphanedPayment = Payment::where('customer_id', $session->customer_id)
                 ->whereNull('subscription_id')
+                ->whereNull('price_id')
                 ->where('created_at', '>=', now()->subMinutes(5))
                 ->first();
 

@@ -205,6 +205,61 @@ class BillingNotificationTest extends TestCase
         $this->assertStringNotContainsString('one-time purchase', $mail->introLines[0]);
     }
 
+    public function test_payment_succeeded_email_shows_renewal_date_for_subscription(): void
+    {
+        $product = Product::factory()->create(['name' => 'Pro Plan']);
+        $price = Price::factory()->create([
+            'product_id' => $product->id,
+            'amount' => 2999,
+            'interval' => 'month',
+        ]);
+        $subscription = Subscription::factory()->create([
+            'customer_id' => $this->customer->id,
+            'price_id' => $price->id,
+            'current_period_ends_at' => '2026-03-12 00:00:00',
+        ]);
+        $payment = Payment::factory()->create([
+            'customer_id' => $this->customer->id,
+            'price_id' => $price->id,
+            'subscription_id' => $subscription->id,
+            'amount' => 2999,
+            'currency' => Currency::USD,
+        ]);
+
+        $notification = new PaymentSucceededNotification($payment);
+        $mail = $notification->toMail($this->user);
+
+        $this->assertStringContainsString('March 12, 2026', $mail->introLines[1]);
+        $this->assertStringContainsString('next billing date', $mail->introLines[1]);
+    }
+
+    public function test_payment_succeeded_email_omits_renewal_date_when_not_available(): void
+    {
+        $product = Product::factory()->create(['name' => 'Pro Plan']);
+        $price = Price::factory()->create([
+            'product_id' => $product->id,
+            'amount' => 2999,
+            'interval' => 'month',
+        ]);
+        $subscription = Subscription::factory()->create([
+            'customer_id' => $this->customer->id,
+            'price_id' => $price->id,
+            'current_period_ends_at' => null,
+        ]);
+        $payment = Payment::factory()->create([
+            'customer_id' => $this->customer->id,
+            'price_id' => $price->id,
+            'subscription_id' => $subscription->id,
+            'amount' => 2999,
+            'currency' => Currency::USD,
+        ]);
+
+        $notification = new PaymentSucceededNotification($payment);
+        $mail = $notification->toMail($this->user);
+
+        $this->assertCount(1, $mail->introLines);
+    }
+
     public function test_payment_succeeded_email_links_to_invoice_when_available(): void
     {
         $payment = Payment::factory()->create([
