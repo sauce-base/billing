@@ -13,7 +13,7 @@ class WebhookController
         private BillingService $billingService,
     ) {}
 
-    public function handle(string $provider, Request $request): Response
+    public function __invoke(string $provider, Request $request): Response
     {
         try {
             $this->billingService->handleWebhook($provider, $request);
