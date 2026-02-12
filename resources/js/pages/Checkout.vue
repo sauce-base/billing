@@ -34,8 +34,11 @@ const form = useForm({
     },
 });
 
-function formatPrice(amount: number): string {
-    return `$${(amount / 100).toFixed(2)}`;
+function formatPrice(amount: number, currency?: string): string {
+    return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: currency?.toUpperCase() ?? 'EUR',
+    }).format(amount / 100);
 }
 
 function handleCheckout() {
@@ -91,7 +94,7 @@ function handleCheckout() {
                             class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"
                         >
                             <span>{{ $t('Subtotal') }}</span>
-                            <span>{{ formatPrice(price.amount) }}</span>
+                            <span>{{ formatPrice(price.amount, price.currency) }}</span>
                         </div>
                         <p class="text-xs text-gray-500 dark:text-gray-500">
                             {{
@@ -115,7 +118,7 @@ function handleCheckout() {
                             <span
                                 class="text-lg font-bold text-gray-900 dark:text-white"
                             >
-                                {{ formatPrice(price.amount) }}
+                                {{ formatPrice(price.amount, price.currency) }}
                             </span>
                             <span
                                 class="ml-1 text-sm text-gray-500 dark:text-gray-400"

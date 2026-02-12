@@ -23,9 +23,14 @@ function handleGetStarted() {
     });
 }
 
-function formatPrice(amount: number | string): string {
+function formatPrice(amount: number | string, currency?: string): string {
     const cents = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return `$${Math.round(cents / 100)}`;
+    return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: currency?.toUpperCase() ?? 'EUR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(cents / 100);
 }
 
 const priceKey = computed(() => props.price?.amount);
@@ -87,7 +92,7 @@ watch(priceKey, () => {
                     v-if="price?.metadata?.original_price"
                     class="text-2xl text-gray-400 line-through dark:text-gray-600"
                 >
-                    {{ formatPrice(price.metadata.original_price) }}
+                    {{ formatPrice(price.metadata.original_price, price.currency) }}
                 </span>
                 <span
                     v-if="price?.metadata?.badge"
@@ -107,7 +112,7 @@ watch(priceKey, () => {
                     <span
                         class="text-5xl font-semibold tracking-tight text-gray-900 dark:text-white"
                     >
-                        {{ formatPrice(price.amount) }}
+                        {{ formatPrice(price.amount, price.currency) }}
                     </span>
                     <span class="text-base text-gray-500 dark:text-gray-400">
                         {{ getIntervalDisplay(price.interval) }}
