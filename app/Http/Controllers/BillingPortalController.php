@@ -3,7 +3,7 @@
 namespace Modules\Billing\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Modules\Billing\Services\BillingService;
 
 class BillingPortalController
@@ -12,12 +12,9 @@ class BillingPortalController
         private BillingService $billingService,
     ) {}
 
-    public function __invoke(Request $request): RedirectResponse
+    public function __invoke(): RedirectResponse
     {
-        /** @var \App\Models\User $user */
-        $user = $request->user();
-
-        $url = $this->billingService->getManagementUrl($user);
+        $url = $this->billingService->getManagementUrl(Auth::user());
 
         return redirect()->away($url);
     }
