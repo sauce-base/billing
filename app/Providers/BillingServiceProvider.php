@@ -37,12 +37,25 @@ class BillingServiceProvider extends ModuleServiceProvider
     {
         parent::boot();
 
+        // Register policies
+        $this->registerPolicies();
+
+        /**
+         * Establishes a dynamic relationship mapping between the User model and the Customer model
+         * specifically for billing operations within the Billing module.
+         *
+         * This relationship is defined here to maintain separation of concerns and keep
+         * billing-related logic contained within the Billing service provider. However,
+         * if you prefer a more traditional approach or need the relationship to be
+         * available globally throughout your application, consider moving this
+         * relationship definition directly to the User model class.
+         *
+         * @see User - The source model in the relationship
+         * @see Customer - The target model containing billing information
+         */
         User::resolveRelationUsing('billingCustomer', function (User $user) {
             return $user->hasOne(Customer::class);
         });
-
-        // Register policies
-        $this->registerPolicies();
     }
 
     /**
