@@ -40,7 +40,7 @@ class CheckoutController
         ]);
     }
 
-    public function store(Request $request, CheckoutSession $checkoutSession)
+    public function store(Request $request, CheckoutSession $checkoutSession): \Symfony\Component\HttpFoundation\Response
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],

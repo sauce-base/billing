@@ -19,6 +19,13 @@ class WebhookController
             $this->billingService->handleWebhook($provider, $request);
 
             return response()->noContent(200);
+        } catch (\RuntimeException $e) {
+            Log::warning('Webhook processing error (non-retryable)', [
+                'provider' => $provider,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->noContent(200);
         } catch (\Throwable $e) {
             Log::error('Webhook processing failed', [
                 'provider' => $provider,

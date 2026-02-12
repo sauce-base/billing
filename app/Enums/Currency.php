@@ -16,4 +16,11 @@ enum Currency: string
     {
         return self::from(config('billing.default_currency'));
     }
+
+    public function formatAmount(int $amountInMinorUnits): string
+    {
+        $formatter = new \NumberFormatter(app()->getLocale(), \NumberFormatter::CURRENCY);
+
+        return $formatter->formatCurrency($amountInMinorUnits / 100, $this->value);
+    }
 }
