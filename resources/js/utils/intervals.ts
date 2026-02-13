@@ -11,7 +11,7 @@ export const INTERVAL_CONFIG: Record<
     year: { display: '/year', label: 'Yearly', normalized: 'year' },
     yearly: { display: '/year', label: 'Yearly', normalized: 'year' },
 };
-//TODO: check this.
+
 export function getIntervalDisplay(interval: string | null): string {
     if (!interval) return 'one-time';
     return INTERVAL_CONFIG[interval]?.display || `/${interval}`;

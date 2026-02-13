@@ -2,18 +2,25 @@
 
 namespace Modules\Billing\Http\Controllers;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Billing\Enums\InvoiceStatus;
 use Modules\Billing\Enums\SubscriptionStatus;
 use Modules\Billing\Models\Invoice;
+use Modules\Billing\Services\BillingService;
 
 class SettingsBillingController
 {
-    public function show(): Response
+    public function show(Request $request, BillingService $billingService): Response
     {
         $customer = Auth::user()->billingCustomer;
+
+        if ($sessionId = $request->query('session_id')) {
+            $billingService->fulfillCheckoutIfNeeded($sessionId);
+            $customer = Auth::user()->billingCustomer()->first();
+        }
 
         if (! $customer) {
             return Inertia::render('Billing::SettingsBilling', [

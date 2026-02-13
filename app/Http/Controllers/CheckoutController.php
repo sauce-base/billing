@@ -19,7 +19,7 @@ class CheckoutController
     public function create(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'price_id' => ['required', 'exists:prices,id'],
+            'price_id' => ['required', 'exists:prices,id,is_active,1'],
         ]);
 
         $session = CheckoutSession::create([
@@ -33,6 +33,9 @@ class CheckoutController
 
     public function show(CheckoutSession $checkoutSession): Response
     {
+        abort_if($checkoutSession->status !== CheckoutSessionStatus::Pending, 410);
+        abort_if($checkoutSession->expires_at?->isPast(), 410);
+
         $checkoutSession->load('price.product');
 
         return Inertia::render('Billing::Checkout', [
@@ -42,6 +45,13 @@ class CheckoutController
 
     public function store(Request $request, CheckoutSession $checkoutSession): \Symfony\Component\HttpFoundation\Response
     {
+        abort_if($checkoutSession->status !== CheckoutSessionStatus::Pending, 410);
+        abort_if($checkoutSession->expires_at?->isPast(), 410);
+
+        if ($checkoutSession->customer_id && $checkoutSession->customer?->user_id !== $request->user()?->id) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
@@ -56,7 +66,7 @@ class CheckoutController
         $result = $this->billingService->processCheckout(
             session: $checkoutSession,
             user: $request->user(),
-            successUrl: route('settings.billing'),
+            successUrl: route('settings.billing').'?session_id={CHECKOUT_SESSION_ID}',
             cancelUrl: route('billing.checkout', $checkoutSession),
             billingDetails: $validated,
         );

@@ -131,6 +131,11 @@ class StripeGateway implements PaymentGatewayInterface
         );
     }
 
+    public function retrieveCheckoutSession(string $sessionId): array
+    {
+        return $this->stripe->checkout->sessions->retrieve($sessionId)->toArray();
+    }
+
     public function verifyAndParseWebhook(Request $request): WebhookData
     {
         $webhookSecret = config('services.stripe.webhook_secret');

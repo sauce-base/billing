@@ -4,7 +4,9 @@ namespace Modules\Billing\Providers;
 
 use App\Models\User;
 use App\Providers\ModuleServiceProvider;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Gate;
+use Modules\Billing\Console\ExpireCheckoutSessionsCommand;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Models\Customer;
 use Modules\Billing\Services\BillingService;
@@ -18,6 +20,10 @@ class BillingServiceProvider extends ModuleServiceProvider
 
     protected array $providers = [
         RouteServiceProvider::class,
+    ];
+
+    protected array $commands = [
+        ExpireCheckoutSessionsCommand::class,
     ];
 
     public function register(): void
@@ -66,6 +72,11 @@ class BillingServiceProvider extends ModuleServiceProvider
         parent::registerConfig();
 
         $this->mergeConfigFrom(module_path($this->name, 'config/services.php'), 'services');
+    }
+
+    protected function configureSchedules(Schedule $schedule): void
+    {
+        $schedule->command('billing:expire-checkout-sessions')->hourly();
     }
 
     protected function registerPolicies(): void

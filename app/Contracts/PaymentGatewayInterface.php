@@ -25,4 +25,9 @@ interface PaymentGatewayInterface
     public function verifyAndParseWebhook(Request $request): WebhookData;
 
     public function resolvePaymentMethod(string $providerId): ?PaymentMethodData;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function retrieveCheckoutSession(string $sessionId): array;
 }

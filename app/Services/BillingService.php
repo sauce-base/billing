@@ -5,6 +5,7 @@ namespace Modules\Billing\Services;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Billing\Data\CheckoutData;
 use Modules\Billing\Data\CheckoutResultData;
@@ -28,6 +29,7 @@ use Modules\Billing\Models\Invoice;
 use Modules\Billing\Models\Payment;
 use Modules\Billing\Models\PaymentMethod;
 use Modules\Billing\Models\Subscription;
+use Modules\Billing\Models\WebhookEvent;
 
 class BillingService
 {
@@ -67,7 +69,21 @@ class BillingService
         $gateway = $this->manager->driver($provider);
         $webhook = $gateway->verifyAndParseWebhook($request);
 
-        Log::info('Webhook received', ['provider' => $provider, 'type' => $webhook->type?->value ?? 'unmapped']);
+        $webhookType = $webhook->type !== null ? $webhook->type->value : 'unmapped';
+        Log::info('Webhook received', ['provider' => $provider, 'type' => $webhookType]);
+
+        if (WebhookEvent::where('provider_event_id', $webhook->providerEventId)->exists()) {
+            Log::info('Webhook already processed, skipping', ['provider_event_id' => $webhook->providerEventId]);
+
+            return;
+        }
+
+        WebhookEvent::create([
+            'provider_event_id' => $webhook->providerEventId,
+            'provider' => $provider,
+            'type' => $webhookType,
+            'processed_at' => now(),
+        ]);
 
         match ($webhook->type) {
             WebhookEventType::CheckoutCompleted => $this->onCheckoutCompleted($webhook),
@@ -88,6 +104,38 @@ class BillingService
     public function resume(Subscription $subscription): void
     {
         $this->manager->driver()->resumeSubscription($subscription);
+    }
+
+    public function fulfillCheckoutIfNeeded(string $providerSessionId): void
+    {
+        $session = CheckoutSession::where('provider_session_id', $providerSessionId)->first();
+
+        if (! $session || $session->status === CheckoutSessionStatus::Completed) {
+            return;
+        }
+
+        try {
+            $gateway = $this->manager->driver();
+            $stripeSession = $gateway->retrieveCheckoutSession($providerSessionId);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to retrieve checkout session for redirect fulfillment', [
+                'session_id' => $providerSessionId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return;
+        }
+
+        if (($stripeSession['payment_status'] ?? null) !== 'paid') {
+            return;
+        }
+
+        $this->onCheckoutCompleted(new WebhookData(
+            type: WebhookEventType::CheckoutCompleted,
+            provider: 'stripe',
+            providerEventId: 'redirect_fulfill_'.$providerSessionId,
+            payload: $stripeSession,
+        ));
     }
 
     public function getManagementUrl(User $user): string
@@ -115,7 +163,7 @@ class BillingService
                 'email' => $email,
                 'phone' => $phone,
                 'address' => $address,
-            ]));
+            ], fn ($v) => $v !== null));
 
             return $customer;
         }
@@ -140,29 +188,37 @@ class BillingService
             return null;
         }
 
-        $existing = PaymentMethod::where('provider_payment_method_id', $data->providerPaymentMethodId)->first();
+        return DB::transaction(function () use ($customer, $data) {
+            $existing = PaymentMethod::where('provider_payment_method_id', $data->providerPaymentMethodId)->first();
 
-        if ($existing) {
-            if (! $existing->is_default) {
-                PaymentMethod::where('customer_id', $customer->id)->where('is_default', true)->update(['is_default' => false]);
-                $existing->update(['is_default' => true]);
+            if ($existing) {
+                if (! $existing->is_default) {
+                    PaymentMethod::where('customer_id', $customer->id)
+                        ->where('is_default', true)
+                        ->lockForUpdate()
+                        ->update(['is_default' => false]);
+                    $existing->update(['is_default' => true]);
+                }
+
+                return $existing;
             }
 
-            return $existing;
-        }
+            PaymentMethod::where('customer_id', $customer->id)
+                ->where('is_default', true)
+                ->lockForUpdate()
+                ->update(['is_default' => false]);
 
-        PaymentMethod::where('customer_id', $customer->id)->where('is_default', true)->update(['is_default' => false]);
-
-        return PaymentMethod::create([
-            'customer_id' => $customer->id,
-            'provider_payment_method_id' => $data->providerPaymentMethodId,
-            'type' => $data->type,
-            'card_brand' => $data->cardBrand,
-            'card_last_four' => $data->cardLastFour,
-            'card_exp_month' => $data->cardExpMonth,
-            'card_exp_year' => $data->cardExpYear,
-            'is_default' => true,
-        ]);
+            return PaymentMethod::create([
+                'customer_id' => $customer->id,
+                'provider_payment_method_id' => $data->providerPaymentMethodId,
+                'type' => $data->type,
+                'card_brand' => $data->cardBrand,
+                'card_last_four' => $data->cardLastFour,
+                'card_exp_month' => $data->cardExpMonth,
+                'card_exp_year' => $data->cardExpYear,
+                'is_default' => true,
+            ]);
+        });
     }
 
     /**
@@ -239,68 +295,88 @@ class BillingService
 
         $session = CheckoutSession::where('provider_session_id', $payload['id'])->first();
 
-        if (! $session) {
+        if (! $session || $session->status === CheckoutSessionStatus::Completed) {
             return;
         }
 
-        $session->update(['status' => CheckoutSessionStatus::Completed]);
-
         $customer = $session->customer;
+
+        if (! $customer) {
+            Log::warning('Checkout session missing customer', ['session_id' => $session->id]);
+
+            return;
+        }
+
         $subscriptionId = $payload['subscription'] ?? null;
+        /** @var array{subscription: ?Subscription, payment: ?Payment} $result */
+        $result = ['subscription' => null, 'payment' => null];
 
-        if ($subscriptionId) {
-            $pm = $customer ? $this->ensurePaymentMethod($customer, $subscriptionId, $webhook->provider) : null;
+        DB::transaction(function () use ($session, $customer, $payload, $webhook, $subscriptionId, &$result) {
+            $session->update(['status' => CheckoutSessionStatus::Completed]);
 
-            $subscription = Subscription::create([
-                'customer_id' => $session->customer_id,
-                'price_id' => $session->price_id,
-                'payment_method_id' => $pm?->id,
-                'provider_subscription_id' => $subscriptionId,
-                'status' => SubscriptionStatus::Active,
-                'current_period_starts_at' => now(),
-            ]);
+            if ($subscriptionId) {
+                $pm = $this->ensurePaymentMethod($customer, $subscriptionId, $webhook->provider);
 
-            // Link any payment created by an earlier invoice webhook (race condition)
-            $orphanedPayment = Payment::where('customer_id', $session->customer_id)
-                ->whereNull('subscription_id')
-                ->whereNull('price_id')
-                ->where('created_at', '>=', now()->subMinutes(5))
-                ->first();
+                $subscription = Subscription::firstOrCreate(
+                    ['provider_subscription_id' => $subscriptionId],
+                    [
+                        'customer_id' => $session->customer_id,
+                        'price_id' => $session->price_id,
+                        'payment_method_id' => $pm?->id,
+                        'status' => SubscriptionStatus::Active,
+                        'current_period_starts_at' => now(),
+                    ],
+                );
 
-            if ($orphanedPayment) {
-                $orphanedPayment->update([
-                    'subscription_id' => $subscription->id,
-                    'price_id' => $session->price_id,
-                ]);
-                event(new PaymentSucceeded($orphanedPayment));
-            } else {
-                $payment = Payment::create([
+                $result['subscription'] = $subscription;
+
+                // Link any payment created by an earlier invoice webhook (race condition)
+                $orphanedPayment = Payment::where('customer_id', $session->customer_id)
+                    ->whereNull('subscription_id')
+                    ->whereNull('price_id')
+                    ->where('created_at', '>=', now()->subMinutes(5))
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($orphanedPayment) {
+                    $orphanedPayment->update([
+                        'subscription_id' => $subscription->id,
+                        'price_id' => $session->price_id,
+                    ]);
+                    $result['payment'] = $orphanedPayment;
+                } else {
+                    $result['payment'] = Payment::create([
+                        'customer_id' => $session->customer_id,
+                        'subscription_id' => $subscription->id,
+                        'price_id' => $session->price_id,
+                        'payment_method_id' => $pm?->id,
+                        'currency' => $this->parseCurrency($payload),
+                        'amount' => $payload['amount_total'] ?? 0,
+                        'status' => PaymentStatus::Succeeded,
+                    ]);
+                }
+            } elseif ($payload['payment_intent'] ?? null) {
+                $pm = $this->ensurePaymentMethod($customer, $payload['payment_intent'], $webhook->provider);
+
+                $result['payment'] = Payment::create([
                     'customer_id' => $session->customer_id,
-                    'subscription_id' => $subscription->id,
                     'price_id' => $session->price_id,
                     'payment_method_id' => $pm?->id,
+                    'provider_payment_id' => $payload['payment_intent'],
                     'currency' => $this->parseCurrency($payload),
                     'amount' => $payload['amount_total'] ?? 0,
                     'status' => PaymentStatus::Succeeded,
                 ]);
-                event(new PaymentSucceeded($payment));
             }
+        });
 
-            event(new SubscriptionCreated($subscription));
-        } elseif ($payload['payment_intent'] ?? null) {
-            $pm = $customer ? $this->ensurePaymentMethod($customer, $payload['payment_intent'], $webhook->provider) : null;
+        // Fire events after transaction commits
+        if ($result['payment']) {
+            event(new PaymentSucceeded($result['payment']));
+        }
 
-            $payment = Payment::create([
-                'customer_id' => $session->customer_id,
-                'price_id' => $session->price_id,
-                'payment_method_id' => $pm?->id,
-                'provider_payment_id' => $payload['payment_intent'],
-                'currency' => $this->parseCurrency($payload),
-                'amount' => $payload['amount_total'] ?? 0,
-                'status' => PaymentStatus::Succeeded,
-            ]);
-
-            event(new PaymentSucceeded($payment));
+        if ($result['subscription']) {
+            event(new SubscriptionCreated($result['subscription']));
         }
 
         event(new CheckoutCompleted($session));
@@ -403,6 +479,13 @@ class BillingService
         // after it links this orphaned payment to the subscription.
         if ($payment->subscription_id === null && $this->resolveSubscriptionId($webhook->payload) !== null) {
             return;
+        }
+
+        // Restore subscription status after successful payment recovery
+        if ($payment->subscription_id) {
+            Subscription::where('id', $payment->subscription_id)
+                ->where('status', SubscriptionStatus::PastDue)
+                ->update(['status' => SubscriptionStatus::Active]);
         }
 
         event(new PaymentSucceeded($payment));

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Auth;
+use Modules\Billing\Models\Product;
 use Spatie\Navigation\Facades\Navigation;
 use Spatie\Navigation\Section;
 
@@ -15,7 +16,7 @@ use Spatie\Navigation\Section;
 */
 
 // Landing Page Navigation
-Navigation::add('Pricing', '/#pricing', function (Section $section) {
+Navigation::addIf(Product::displayable()->count(), 'Pricing', '/#pricing', function (Section $section) {
     $section->attributes([
         'group' => 'landing',
         'slug' => 'pricing',

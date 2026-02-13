@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Modules\Billing\Services\BillingService;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class WebhookController
 {
@@ -19,6 +20,14 @@ class WebhookController
             $this->billingService->handleWebhook($provider, $request);
 
             return response()->noContent(200);
+        } catch (HttpException $e) {
+            Log::warning('Webhook rejected', [
+                'provider' => $provider,
+                'status' => $e->getStatusCode(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->noContent($e->getStatusCode());
         } catch (\RuntimeException $e) {
             Log::warning('Webhook processing error (non-retryable)', [
                 'provider' => $provider,
