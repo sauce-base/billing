@@ -8,6 +8,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string|null $provider_customer_id
+ * @property string|null $email
+ * @property string|null $name
+ * @property string|null $phone
+ * @property array<string, mixed>|null $address
+ * @property array<string, mixed>|null $metadata
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ */
 class Customer extends Model
 {
     use HasFactory;

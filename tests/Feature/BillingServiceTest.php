@@ -1085,7 +1085,10 @@ class BillingServiceTest extends TestCase
 
         $this->billingService->handleWebhook('stripe', request());
 
-        $this->assertTrue(true);
+        $this->assertDatabaseHas('webhook_events', [
+            'provider_event_id' => 'evt_unmapped',
+            'type' => 'unmapped',
+        ]);
     }
 
     public function test_webhook_invoice_paid_is_idempotent(): void

@@ -8,6 +8,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Modules\Billing\Enums\CheckoutSessionStatus;
 
+/**
+ * @property int $id
+ * @property string $uuid
+ * @property int|null $customer_id
+ * @property int $price_id
+ * @property string|null $provider_session_id
+ * @property string|null $success_url
+ * @property string|null $cancel_url
+ * @property \Modules\Billing\Enums\CheckoutSessionStatus $status
+ * @property array<string, mixed>|null $metadata
+ * @property \Carbon\Carbon|null $expires_at
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ */
 class CheckoutSession extends Model
 {
     use HasFactory;

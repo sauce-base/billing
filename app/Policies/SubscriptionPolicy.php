@@ -9,6 +9,6 @@ class SubscriptionPolicy
 {
     public function update(User $user, Subscription $subscription): bool
     {
-        return $user->id === $subscription->user_id;
+        return $user->id === $subscription->customer?->user_id;
     }
 }

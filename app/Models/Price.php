@@ -8,6 +8,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\Billing\Enums\BillingScheme;
 use Modules\Billing\Enums\Currency;
 
+/**
+ * @property int $id
+ * @property int $product_id
+ * @property int|null $payment_provider_id
+ * @property string|null $provider_price_id
+ * @property \Modules\Billing\Enums\Currency $currency
+ * @property int $amount
+ * @property \Modules\Billing\Enums\BillingScheme $billing_scheme
+ * @property string|null $interval
+ * @property int|null $interval_count
+ * @property array<string, mixed>|null $metadata
+ * @property bool $is_active
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ */
 class Price extends Model
 {
     use HasFactory;

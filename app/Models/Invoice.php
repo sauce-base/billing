@@ -8,6 +8,27 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\Billing\Enums\Currency;
 use Modules\Billing\Enums\InvoiceStatus;
 
+/**
+ * @property int $id
+ * @property int $customer_id
+ * @property int|null $subscription_id
+ * @property int|null $payment_id
+ * @property string|null $provider_invoice_id
+ * @property string|null $number
+ * @property \Modules\Billing\Enums\Currency $currency
+ * @property int $subtotal
+ * @property int $tax
+ * @property int $total
+ * @property \Modules\Billing\Enums\InvoiceStatus $status
+ * @property \Carbon\Carbon|null $due_at
+ * @property \Carbon\Carbon|null $paid_at
+ * @property \Carbon\Carbon|null $voided_at
+ * @property string|null $hosted_invoice_url
+ * @property string|null $pdf_url
+ * @property array<string, mixed>|null $metadata
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ */
 class Invoice extends Model
 {
     use HasFactory;

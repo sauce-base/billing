@@ -8,6 +8,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\Billing\Enums\Currency;
 use Modules\Billing\Enums\PaymentStatus;
 
+/**
+ * @property int $id
+ * @property int $customer_id
+ * @property int|null $subscription_id
+ * @property int|null $payment_method_id
+ * @property int|null $price_id
+ * @property string|null $provider_payment_id
+ * @property \Modules\Billing\Enums\Currency $currency
+ * @property int $amount
+ * @property int $amount_refunded
+ * @property \Modules\Billing\Enums\PaymentStatus $status
+ * @property string|null $failure_code
+ * @property string|null $failure_message
+ * @property array<string, mixed>|null $metadata
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ */
 class Payment extends Model
 {
     use HasFactory;

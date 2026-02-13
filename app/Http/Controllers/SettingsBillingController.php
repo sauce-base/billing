@@ -66,7 +66,7 @@ class SettingsBillingController
                 'card_exp_month' => $defaultPaymentMethod->card_exp_month,
                 'card_exp_year' => $defaultPaymentMethod->card_exp_year,
             ] : null,
-            'invoices' => $invoices->map(fn ($invoice) => [
+            'invoices' => $invoices->map(fn (Invoice $invoice) => [
                 'id' => $invoice->id,
                 'number' => $invoice->number,
                 'total' => $invoice->total,

@@ -10,6 +10,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int $id
+ * @property string $sku
+ * @property string $slug
+ * @property string $name
+ * @property string|null $description
+ * @property int $display_order
+ * @property bool $is_visible
+ * @property bool $is_highlighted
+ * @property array<string, mixed>|null $features
+ * @property array<string, mixed>|null $metadata
+ * @property bool $is_active
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @property \Carbon\Carbon|null $deleted_at
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder active()
+ * @method static \Illuminate\Database\Eloquent\Builder visible()
+ * @method static \Illuminate\Database\Eloquent\Builder displayable()
+ */
 class Product extends Model
 {
     use HasFactory, Sluggable, SoftDeletes;

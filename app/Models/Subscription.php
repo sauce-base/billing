@@ -8,6 +8,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Billing\Enums\SubscriptionStatus;
 
+/**
+ * @property int $id
+ * @property int $customer_id
+ * @property int $price_id
+ * @property int|null $payment_method_id
+ * @property string|null $provider_subscription_id
+ * @property \Modules\Billing\Enums\SubscriptionStatus $status
+ * @property \Carbon\Carbon|null $trial_starts_at
+ * @property \Carbon\Carbon|null $trial_ends_at
+ * @property \Carbon\Carbon|null $current_period_starts_at
+ * @property \Carbon\Carbon|null $current_period_ends_at
+ * @property \Carbon\Carbon|null $cancelled_at
+ * @property \Carbon\Carbon|null $ends_at
+ * @property array<string, mixed>|null $metadata
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ */
 class Subscription extends Model
 {
     use HasFactory;

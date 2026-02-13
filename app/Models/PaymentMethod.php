@@ -6,6 +6,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $customer_id
+ * @property string|null $provider_payment_method_id
+ * @property string $type
+ * @property string|null $card_brand
+ * @property string|null $card_last_four
+ * @property int|null $card_exp_month
+ * @property int|null $card_exp_year
+ * @property array<string, mixed>|null $metadata
+ * @property bool $is_default
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ */
 class PaymentMethod extends Model
 {
     use HasFactory;
