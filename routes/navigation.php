@@ -31,6 +31,7 @@ Navigation::addIf(! Auth::user()?->isSubscriber(), 'Upgrade', '/#pricing', funct
         'group' => 'user',
         'slug' => 'upgrade',
         'order' => 0,
+        'class' => 'text-yellow-600 hover:text-yellow-700 dark:hover:text-yellow-400',
     ]);
 });
 

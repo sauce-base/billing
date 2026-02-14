@@ -198,6 +198,49 @@ class BillingServiceTest extends TestCase
         Event::assertDispatched(PaymentSucceeded::class);
     }
 
+    public function test_webhook_checkout_completed_syncs_period_dates_from_gateway(): void
+    {
+        Event::fake([CheckoutCompleted::class, SubscriptionCreated::class, PaymentSucceeded::class]);
+
+        $periodStart = 1770827927;
+        $periodEnd = 1773247127;
+
+        $this->gateway->method('retrieveSubscription')->willReturn([
+            'id' => 'sub_test_period',
+            'current_period_start' => $periodStart,
+            'current_period_end' => $periodEnd,
+        ]);
+
+        $session = CheckoutSession::factory()->create([
+            'provider_session_id' => 'cs_test_period',
+        ]);
+
+        $webhook = new WebhookData(
+            type: WebhookEventType::CheckoutCompleted,
+            provider: 'stripe',
+            providerEventId: 'evt_test_period',
+            payload: [
+                'id' => 'cs_test_period',
+                'subscription' => 'sub_test_period',
+                'currency' => 'eur',
+                'amount_total' => 2900,
+            ],
+        );
+
+        $this->gateway->method('verifyAndParseWebhook')->willReturn($webhook);
+
+        $this->billingService->handleWebhook('stripe', request());
+
+        $subscription = Subscription::where('provider_subscription_id', 'sub_test_period')->first();
+        $this->assertNotNull($subscription);
+        $this->assertNotNull($subscription->current_period_starts_at);
+        $this->assertNotNull($subscription->current_period_ends_at);
+        $this->assertEquals($periodStart, $subscription->current_period_starts_at->getTimestamp());
+        $this->assertEquals($periodEnd, $subscription->current_period_ends_at->getTimestamp());
+
+        Event::assertDispatched(SubscriptionCreated::class);
+    }
+
     public function test_webhook_checkout_completed_creates_payment_for_one_time_purchase(): void
     {
         Event::fake([CheckoutCompleted::class, PaymentSucceeded::class]);

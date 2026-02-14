@@ -310,8 +310,9 @@ class BillingService
         $subscriptionId = $payload['subscription'] ?? null;
         /** @var array{subscription: ?Subscription, payment: ?Payment} $result */
         $result = ['subscription' => null, 'payment' => null];
+        $wasJustCreated = false;
 
-        DB::transaction(function () use ($session, $customer, $payload, $webhook, $subscriptionId, &$result) {
+        DB::transaction(function () use ($session, $customer, $payload, $webhook, $subscriptionId, &$result, &$wasJustCreated) {
             $session->update(['status' => CheckoutSessionStatus::Completed]);
 
             if ($subscriptionId) {
@@ -328,6 +329,7 @@ class BillingService
                     ],
                 );
 
+                $wasJustCreated = $subscription->wasRecentlyCreated;
                 $result['subscription'] = $subscription;
 
                 // Link any payment created by an earlier invoice webhook (race condition)
@@ -369,6 +371,11 @@ class BillingService
                 ]);
             }
         });
+
+        // Sync period dates from gateway after transaction commits (avoids API call inside transaction)
+        if ($result['subscription'] && $wasJustCreated && $subscriptionId) {
+            $this->syncSubscriptionPeriod($result['subscription'], $subscriptionId, $webhook->provider);
+        }
 
         // Fire events after transaction commits
         if ($result['payment']) {
@@ -550,5 +557,29 @@ class BillingService
         }
 
         event(new InvoicePaid($invoice));
+    }
+
+    private function syncSubscriptionPeriod(Subscription $subscription, string $providerSubscriptionId, string $provider): void
+    {
+        try {
+            $stripeSubscription = $this->manager->driver($provider)->retrieveSubscription($providerSubscriptionId);
+
+            $updates = [];
+            if (isset($stripeSubscription['current_period_start'])) {
+                $updates['current_period_starts_at'] = Carbon::createFromTimestamp($stripeSubscription['current_period_start']);
+            }
+            if (isset($stripeSubscription['current_period_end'])) {
+                $updates['current_period_ends_at'] = Carbon::createFromTimestamp($stripeSubscription['current_period_end']);
+            }
+
+            if ($updates) {
+                $subscription->update($updates);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to sync subscription period from gateway', [
+                'subscription_id' => $subscription->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

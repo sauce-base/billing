@@ -26,8 +26,7 @@ interface PaymentGatewayInterface
 
     public function resolvePaymentMethod(string $providerId): ?PaymentMethodData;
 
-    /**
-     * @return array<string, mixed>
-     */
     public function retrieveCheckoutSession(string $sessionId): array;
+
+    public function retrieveSubscription(string $subscriptionId): array;
 }

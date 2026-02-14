@@ -136,6 +136,11 @@ class StripeGateway implements PaymentGatewayInterface
         return $this->stripe->checkout->sessions->retrieve($sessionId)->toArray();
     }
 
+    public function retrieveSubscription(string $subscriptionId): array
+    {
+        return $this->stripe->subscriptions->retrieve($subscriptionId)->toArray();
+    }
+
     public function verifyAndParseWebhook(Request $request): WebhookData
     {
         $webhookSecret = config('services.stripe.webhook_secret');
