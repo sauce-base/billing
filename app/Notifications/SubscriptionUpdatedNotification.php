@@ -26,7 +26,7 @@ class SubscriptionUpdatedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $productName = $this->subscription->price?->product?->name ?? __('your plan');
+        $productName = $this->subscription->price->product->name;
 
         $mail = (new MailMessage)
             ->greeting(__('Hello :name,', ['name' => $notifiable->name]));

@@ -25,7 +25,7 @@ class SubscriptionResumedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $productName = $this->subscription->price?->product?->name ?? __('your plan');
+        $productName = $this->subscription->price->product->name;
 
         return (new MailMessage)
             ->subject(__('Subscription Resumed'))

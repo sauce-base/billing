@@ -116,7 +116,6 @@ class BillingServiceTest extends TestCase
             'status' => CheckoutSessionStatus::Pending,
         ]);
 
-        $this->assertNotNull($session->uuid);
         $this->assertTrue(strlen($session->uuid) === 36);
     }
 

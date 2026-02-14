@@ -30,12 +30,12 @@ class PaymentSucceededNotification extends Notification
         $currency = $this->payment->currency ?? Currency::default();
         $amount = $currency->formatAmount($this->payment->amount);
         $isOneTime = $this->payment->subscription_id === null;
-        $productName = $this->payment->price?->product?->name
-            ?? $this->payment->subscription?->price?->product?->name
+        $productName = $this->payment->price?->product->name
+            ?? $this->payment->subscription?->price->product->name
             ?? __('your subscription');
 
         $invoice = Invoice::where('payment_id', $this->payment->id)->first();
-        $actionUrl = $invoice?->hosted_invoice_url ?? route('settings.billing');
+        $actionUrl = $invoice?->hosted_invoice_url ?? route('settings.billing'); // @phpstan-ignore nullsafe.neverNull
         $actionText = $invoice?->hosted_invoice_url ? __('View Invoice') : __('Go to Billing');
 
         $line = $isOneTime

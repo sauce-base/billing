@@ -112,9 +112,9 @@ class Product extends Model
     #[Scope]
     protected function displayable(Builder $query): void
     {
-        $query->active()
-            ->visible()
-            ->with(['prices' => fn (HasMany $query) => $query->where('is_active', true)]);
+        $query->where('is_active', true)
+            ->where('is_visible', true)
+            ->with(['prices' => fn ($query) => $query->where('is_active', true)]);
     }
 
     /**

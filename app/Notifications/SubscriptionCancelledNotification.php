@@ -25,7 +25,7 @@ class SubscriptionCancelledNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $productName = $this->subscription->price?->product?->name ?? __('your plan');
+        $productName = $this->subscription->price->product->name;
         $endsAt = $this->subscription->ends_at?->format('F j, Y') ?? __('the end of your billing period');
 
         return (new MailMessage)

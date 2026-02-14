@@ -2,13 +2,11 @@
 
 namespace Modules\Billing\Providers;
 
-use App\Models\User;
 use App\Providers\ModuleServiceProvider;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Gate;
 use Modules\Billing\Console\ExpireCheckoutSessionsCommand;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
-use Modules\Billing\Models\Customer;
 use Modules\Billing\Services\BillingService;
 use Modules\Billing\Services\PaymentGatewayManager;
 
@@ -45,23 +43,6 @@ class BillingServiceProvider extends ModuleServiceProvider
 
         // Register policies
         $this->registerPolicies();
-
-        /**
-         * Establishes a dynamic relationship mapping between the User model and the Customer model
-         * specifically for billing operations within the Billing module.
-         *
-         * This relationship is defined here to maintain separation of concerns and keep
-         * billing-related logic contained within the Billing service provider. However,
-         * if you prefer a more traditional approach or need the relationship to be
-         * available globally throughout your application, consider moving this
-         * relationship definition directly to the User model class.
-         *
-         * @see User - The source model in the relationship
-         * @see Customer - The target model containing billing information
-         */
-        User::resolveRelationUsing('billingCustomer', function (User $user) {
-            return $user->hasOne(Customer::class);
-        });
     }
 
     /**

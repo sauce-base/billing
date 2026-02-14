@@ -15,11 +15,15 @@ class SettingsBillingController
 {
     public function show(Request $request, BillingService $billingService): Response
     {
-        $customer = Auth::user()->billingCustomer;
+        $user = Auth::user();
+
+        /** @var \Modules\Billing\Models\Customer|null $customer */
+        $customer = $user->billingCustomer;
 
         if ($sessionId = $request->query('session_id')) {
             $billingService->fulfillCheckoutIfNeeded($sessionId);
-            $customer = Auth::user()->billingCustomer()->first();
+            /** @var \Modules\Billing\Models\Customer|null $customer */
+            $customer = $user->billingCustomer()->first();
         }
 
         if (! $customer) {
@@ -49,6 +53,8 @@ class SettingsBillingController
             ->limit(20)
             ->get();
 
+        // TODO: move it to a resource?
+
         return Inertia::render('Billing::SettingsBilling', [
             'subscription' => $subscription ? [
                 'id' => $subscription->id,
@@ -70,7 +76,7 @@ class SettingsBillingController
                 'id' => $invoice->id,
                 'number' => $invoice->number,
                 'total' => $invoice->total,
-                'currency' => $invoice->currency?->value,
+                'currency' => $invoice->currency->value,
                 'status' => $invoice->status->value,
                 'paid_at' => $invoice->paid_at?->toISOString(),
                 'hosted_invoice_url' => $invoice->hosted_invoice_url,

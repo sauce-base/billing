@@ -5,7 +5,6 @@ namespace Modules\Billing\Notifications;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use Modules\Billing\Enums\Currency;
 use Modules\Billing\Models\Subscription;
 
 class SubscriptionCreatedNotification extends Notification
@@ -27,10 +26,10 @@ class SubscriptionCreatedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $price = $this->subscription->price;
-        $productName = $price?->product?->name ?? __('our service');
-        $currency = $price?->currency ?? Currency::default();
-        $amount = $currency->formatAmount($price?->amount ?? 0);
-        $interval = $price?->interval ?? 'month';
+        $productName = $price->product->name;
+        $currency = $price->currency;
+        $amount = $currency->formatAmount($price->amount);
+        $interval = $price->interval ?? 'month';
 
         return (new MailMessage)
             ->subject(__('Welcome to :product', ['product' => $productName]))

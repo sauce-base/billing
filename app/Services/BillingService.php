@@ -269,7 +269,7 @@ class BillingService
             if ($existing) {
                 $existing->update([
                     'provider_payment_id' => $providerPaymentId,
-                    'payment_method_id' => $pm?->id ?? $existing->payment_method_id,
+                    'payment_method_id' => $pm?->id ?? $existing->payment_method_id, // @phpstan-ignore nullsafe.neverNull
                 ]);
 
                 return $existing;
