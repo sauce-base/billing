@@ -2,7 +2,6 @@
 
 namespace Modules\Billing\Tests\Feature;
 
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Enums\SubscriptionStatus;
@@ -38,7 +37,7 @@ class SubscriptionCancelTest extends TestCase
 
     public function test_cancel_subscription_calls_billing_service(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         $customer = Customer::factory()->create(['user_id' => $user->id]);
         Subscription::factory()->create([
             'customer_id' => $customer->id,
@@ -56,7 +55,7 @@ class SubscriptionCancelTest extends TestCase
 
     public function test_cancel_subscription_updates_local_state(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         $customer = Customer::factory()->create(['user_id' => $user->id]);
         $subscription = Subscription::factory()->create([
             'customer_id' => $customer->id,
@@ -81,7 +80,7 @@ class SubscriptionCancelTest extends TestCase
 
     public function test_cancel_uses_gateway_period_end_when_local_is_null(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         $customer = Customer::factory()->create(['user_id' => $user->id]);
         $subscription = Subscription::factory()->create([
             'customer_id' => $customer->id,
@@ -104,7 +103,7 @@ class SubscriptionCancelTest extends TestCase
 
     public function test_cancel_returns_404_when_no_active_subscription(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         Customer::factory()->create(['user_id' => $user->id]);
 
         $response = $this->actingAs($user)->post(route('billing.subscription.cancel'));

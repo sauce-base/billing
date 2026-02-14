@@ -25,10 +25,7 @@ class SyncSubscriberRoleTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(\Database\Seeders\RolesDatabaseSeeder::class);
-
-        $this->user = User::factory()->create();
-        $this->user->assignRole(Role::USER);
+        $this->user = $this->createUser();
         $this->customer = Customer::factory()->create(['user_id' => $this->user->id]);
     }
 

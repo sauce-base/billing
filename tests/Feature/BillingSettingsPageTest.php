@@ -2,9 +2,6 @@
 
 namespace Modules\Billing\Tests\Feature;
 
-use App\Enums\Role;
-use App\Models\User;
-use Database\Seeders\RolesDatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use Modules\Billing\Enums\InvoiceStatus;
@@ -18,20 +15,6 @@ use Tests\TestCase;
 class BillingSettingsPageTest extends TestCase
 {
     use RefreshDatabase;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->seed(RolesDatabaseSeeder::class);
-    }
-
-    private function createUser(): User
-    {
-        $user = User::factory()->create();
-        $user->assignRole(Role::USER);
-
-        return $user;
-    }
 
     public function test_billing_page_requires_auth(): void
     {
@@ -47,11 +30,12 @@ class BillingSettingsPageTest extends TestCase
         $response = $this->actingAs($user)->get(route('settings.billing'));
 
         $response->assertOk();
-        $response->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('Billing::SettingsBilling', false)
-            ->where('subscription', null)
-            ->where('paymentMethod', null)
-            ->has('invoices', 0)
+        $response->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->component('Billing::SettingsBilling', false)
+                ->where('subscription', null)
+                ->where('paymentMethod', null)
+                ->has('invoices', 0)
         );
     }
 
@@ -67,11 +51,12 @@ class BillingSettingsPageTest extends TestCase
         $response = $this->actingAs($user)->get(route('settings.billing'));
 
         $response->assertOk();
-        $response->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('Billing::SettingsBilling', false)
-            ->where('subscription.id', $subscription->id)
-            ->where('subscription.status', 'active')
-            ->has('subscription.plan_name')
+        $response->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->component('Billing::SettingsBilling', false)
+                ->where('subscription.id', $subscription->id)
+                ->where('subscription.status', 'active')
+                ->has('subscription.plan_name')
         );
     }
 
@@ -87,8 +72,9 @@ class BillingSettingsPageTest extends TestCase
         $response = $this->actingAs($user)->get(route('settings.billing'));
 
         $response->assertOk();
-        $response->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('invoices', 3)
+        $response->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->has('invoices', 3)
         );
     }
 
@@ -104,9 +90,10 @@ class BillingSettingsPageTest extends TestCase
         $response = $this->actingAs($user)->get(route('settings.billing'));
 
         $response->assertOk();
-        $response->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('paymentMethod.card_brand', 'visa')
-            ->where('paymentMethod.card_last_four', '4242')
+        $response->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->where('paymentMethod.card_brand', 'visa')
+                ->where('paymentMethod.card_last_four', '4242')
         );
     }
 }

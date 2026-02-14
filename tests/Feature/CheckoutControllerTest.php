@@ -2,7 +2,6 @@
 
 namespace Modules\Billing\Tests\Feature;
 
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutResultData;
@@ -52,7 +51,7 @@ class CheckoutControllerTest extends TestCase
 
     public function test_checkout_validates_required_fields(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $response = $this->actingAs($user)->post(route('billing.checkout.store', $this->session), []);
 
@@ -61,7 +60,7 @@ class CheckoutControllerTest extends TestCase
 
     public function test_authenticated_checkout_uses_existing_user(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $response = $this->actingAs($user)->post(route('billing.checkout.store', $this->session), [
             'name' => $user->name,
@@ -78,7 +77,7 @@ class CheckoutControllerTest extends TestCase
 
     public function test_checkout_stores_billing_details_on_customer(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $response = $this->actingAs($user)->post(route('billing.checkout.store', $this->session), [
             'name' => 'Billing Name',

@@ -2,7 +2,6 @@
 
 namespace Modules\Billing\Tests\Feature;
 
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutResultData;
@@ -38,7 +37,7 @@ class CheckoutSessionValidationTest extends TestCase
             'expires_at' => now()->subHour(),
         ]);
 
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $response = $this->actingAs($user)->get(route('billing.checkout', $session));
 
@@ -49,7 +48,7 @@ class CheckoutSessionValidationTest extends TestCase
     {
         $session = CheckoutSession::factory()->completed()->create();
 
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $response = $this->actingAs($user)->get(route('billing.checkout', $session));
 
@@ -63,7 +62,7 @@ class CheckoutSessionValidationTest extends TestCase
             'expires_at' => now()->subHour(),
         ]);
 
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $response = $this->actingAs($user)->post(route('billing.checkout.store', $session), [
             'name' => 'John Doe',
@@ -77,7 +76,7 @@ class CheckoutSessionValidationTest extends TestCase
     {
         $session = CheckoutSession::factory()->completed()->create();
 
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $response = $this->actingAs($user)->post(route('billing.checkout.store', $session), [
             'name' => 'John Doe',
@@ -100,8 +99,8 @@ class CheckoutSessionValidationTest extends TestCase
 
     public function test_store_rejects_checkout_session_owned_by_another_user(): void
     {
-        $owner = User::factory()->create();
-        $attacker = User::factory()->create();
+        $owner = $this->createUser();
+        $attacker = $this->createUser();
 
         $customer = \Modules\Billing\Models\Customer::create([
             'user_id' => $owner->id,
@@ -126,7 +125,7 @@ class CheckoutSessionValidationTest extends TestCase
 
     public function test_billing_portal_redirects_when_no_customer(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $response = $this->actingAs($user)->get(route('billing.portal'));
 

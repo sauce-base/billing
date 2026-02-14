@@ -2,7 +2,6 @@
 
 namespace Modules\Billing\Tests\Feature;
 
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Enums\SubscriptionStatus;
@@ -38,7 +37,7 @@ class SubscriptionResumeTest extends TestCase
 
     public function test_resume_subscription_calls_billing_service(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         $customer = Customer::factory()->create(['user_id' => $user->id]);
         Subscription::factory()->create([
             'customer_id' => $customer->id,
@@ -57,7 +56,7 @@ class SubscriptionResumeTest extends TestCase
 
     public function test_resume_subscription_updates_local_state(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         $customer = Customer::factory()->create(['user_id' => $user->id]);
         $subscription = Subscription::factory()->create([
             'customer_id' => $customer->id,
@@ -80,7 +79,7 @@ class SubscriptionResumeTest extends TestCase
 
     public function test_resume_returns_404_when_no_pending_cancellation(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         $customer = Customer::factory()->create(['user_id' => $user->id]);
         Subscription::factory()->create([
             'customer_id' => $customer->id,
