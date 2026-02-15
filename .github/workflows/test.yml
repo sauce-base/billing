@@ -41,10 +41,23 @@ jobs:
                   rm -rf saucebase/modules/Billing
                   # Copy the checked out Billing module
                   cp -r billing-module saucebase/modules/Billing
-                  # Enable the Billing module
-                  cd saucebase
-                  jq '. + {"Billing": true}' modules_statuses.json > modules_statuses.json.tmp
+
+            - name: Install Auth module (Billing dependency)
+              working-directory: saucebase
+              run: composer require saucebase/auth --dev --no-interaction
+
+            - name: Enable Auth and Billing modules
+              working-directory: saucebase
+              run: |
+                  jq '. + {"Auth": true, "Billing": true}' modules_statuses.json > modules_statuses.json.tmp
                   mv modules_statuses.json.tmp modules_statuses.json
+
+            - name: Patch User model with required traits
+              working-directory: saucebase
+              run: |
+                  php modules/Billing/.github/scripts/patch-user-model.php app/Models/User.php \
+                      'Modules\Auth\Traits\Sociable:Sociable' \
+                      'Modules\Billing\Traits\Billable:Billable'
 
             - name: Install Composer dependencies
               working-directory: saucebase
