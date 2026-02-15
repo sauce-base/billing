@@ -59,9 +59,9 @@ jobs:
                       'Modules\Auth\Traits\Sociable:Sociable' \
                       'Modules\Billing\Traits\Billable:Billable'
 
-            - name: Install Composer dependencies
+            - name: Install Composer dependencies and dump autoload
               working-directory: saucebase
-              run: composer update --prefer-dist --no-interaction --no-progress
+              run: composer update --prefer-dist --no-interaction --no-progress && composer dump-autoload
 
             - name: Copy environment file
               working-directory: saucebase
