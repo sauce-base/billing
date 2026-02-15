@@ -1,9 +1,9 @@
 <?php
 
+use App\Facades\Navigation;
+use App\Navigation\Section;
 use Illuminate\Support\Facades\Auth;
 use Modules\Billing\Models\Product;
-use Spatie\Navigation\Facades\Navigation;
-use Spatie\Navigation\Section;
 
 /*
 |--------------------------------------------------------------------------
