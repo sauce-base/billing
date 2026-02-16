@@ -5,8 +5,10 @@ namespace Modules\Billing\Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutResultData;
+use Modules\Billing\Data\CustomerData;
 use Modules\Billing\Enums\CheckoutSessionStatus;
 use Modules\Billing\Models\CheckoutSession;
+use Modules\Billing\Models\Customer;
 use Modules\Billing\Models\Price;
 use Modules\Billing\Services\PaymentGatewayManager;
 use Tests\TestCase;
@@ -20,7 +22,16 @@ class CheckoutSessionValidationTest extends TestCase
         parent::setUp();
 
         $gateway = $this->createMock(PaymentGatewayInterface::class);
-        $gateway->method('createCustomer')->willReturn('cus_test_123');
+        $gateway->method('createCustomer')->willReturnCallback(
+            fn (CustomerData $data) => Customer::create([
+                'user_id' => $data->user->id,
+                'provider_customer_id' => 'cus_test_123',
+                'email' => $data->email,
+                'name' => $data->name,
+                'phone' => $data->phone,
+                'address' => $data->address?->toArray(),
+            ]),
+        );
         $gateway->method('createCheckoutSession')->willReturn(
             new CheckoutResultData(sessionId: 'cs_test_123', url: 'https://stripe.com/checkout', provider: 'stripe'),
         );

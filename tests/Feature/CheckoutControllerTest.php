@@ -5,8 +5,10 @@ namespace Modules\Billing\Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutResultData;
+use Modules\Billing\Data\CustomerData;
 use Modules\Billing\Enums\CheckoutSessionStatus;
 use Modules\Billing\Models\CheckoutSession;
+use Modules\Billing\Models\Customer;
 use Modules\Billing\Models\Price;
 use Modules\Billing\Services\PaymentGatewayManager;
 use Tests\TestCase;
@@ -29,7 +31,16 @@ class CheckoutControllerTest extends TestCase
         ]);
 
         $gateway = $this->createMock(PaymentGatewayInterface::class);
-        $gateway->method('createCustomer')->willReturn('cus_test_123');
+        $gateway->method('createCustomer')->willReturnCallback(
+            fn (CustomerData $data) => Customer::create([
+                'user_id' => $data->user->id,
+                'provider_customer_id' => 'cus_test_123',
+                'email' => $data->email,
+                'name' => $data->name,
+                'phone' => $data->phone,
+                'address' => $data->address?->toArray(),
+            ]),
+        );
         $gateway->method('createCheckoutSession')->willReturn(
             new CheckoutResultData(sessionId: 'cs_test_123', url: 'https://stripe.com/checkout', provider: 'stripe'),
         );
@@ -103,11 +114,12 @@ class CheckoutControllerTest extends TestCase
 
         $customer = \Modules\Billing\Models\Customer::where('user_id', $user->id)->first();
         $this->assertEquals([
-            'street' => '123 Main St',
+            'country' => 'US',
+            'line1' => '123 Main St',
+            'line2' => null,
             'city' => 'Springfield',
             'state' => 'IL',
-            'postal_code' => '62701',
-            'country' => 'US',
+            'postalCode' => '62701',
         ], $customer->address);
     }
 }

@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutResultData;
+use Modules\Billing\Data\CustomerData;
 use Modules\Billing\Data\PaymentMethodData;
 use Modules\Billing\Data\WebhookData;
 use Modules\Billing\Enums\CheckoutSessionStatus;
@@ -72,7 +73,16 @@ class BillingServiceTest extends TestCase
             'expires_at' => now()->addHours(24),
         ]);
 
-        $this->gateway->method('createCustomer')->willReturn('cus_guest_123');
+        $this->gateway->method('createCustomer')->willReturnCallback(
+            fn (CustomerData $data) => Customer::create([
+                'user_id' => $data->user->id,
+                'provider_customer_id' => 'cus_guest_123',
+                'email' => $data->email,
+                'name' => $data->name,
+                'phone' => $data->phone,
+                'address' => $data->address?->toArray(),
+            ]),
+        );
         $this->gateway->method('createCheckoutSession')->willReturn(
             new CheckoutResultData(sessionId: 'cs_guest_123', url: 'https://stripe.com/checkout', provider: 'stripe'),
         );

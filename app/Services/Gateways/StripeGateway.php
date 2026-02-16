@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutData;
 use Modules\Billing\Data\CheckoutResultData;
+use Modules\Billing\Data\CustomerData;
 use Modules\Billing\Data\PaymentMethodData;
 use Modules\Billing\Data\WebhookData;
 use Modules\Billing\Enums\WebhookEventType;
@@ -32,14 +33,38 @@ class StripeGateway implements PaymentGatewayInterface
         private StripeClient $stripe,
     ) {}
 
-    public function createCustomer(string $name, string $email): string
+    public function createCustomer(CustomerData $data): Customer
     {
-        $customer = $this->stripe->customers->create([
-            'name' => $name,
-            'email' => $email,
-        ]);
+        $params = [
+            'name' => $data->name,
+            'email' => $data->email,
+        ];
 
-        return $customer->id;
+        if ($data->phone) {
+            $params['phone'] = $data->phone;
+        }
+
+        if ($data->address) {
+            $params['address'] = array_filter([
+                'line1' => $data->address->line1,
+                'line2' => $data->address->line2,
+                'city' => $data->address->city,
+                'state' => $data->address->state,
+                'postal_code' => $data->address->postalCode,
+                'country' => $data->address->country,
+            ], fn ($v) => $v !== null);
+        }
+
+        $stripeCustomer = $this->stripe->customers->create($params);
+
+        return Customer::create([
+            'user_id' => $data->user->id,
+            'provider_customer_id' => $stripeCustomer->id,
+            'email' => $data->email,
+            'name' => $data->name,
+            'phone' => $data->phone,
+            'address' => $data->address?->toArray(),
+        ]);
     }
 
     public function createCheckoutSession(CheckoutData $data): CheckoutResultData
