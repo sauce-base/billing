@@ -6,8 +6,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\PaymentMethodData;
+use Modules\Billing\Data\PaymentMethodDetails;
 use Modules\Billing\Data\WebhookData;
 use Modules\Billing\Enums\CheckoutSessionStatus;
+use Modules\Billing\Enums\PaymentMethodType;
 use Modules\Billing\Enums\PaymentStatus;
 use Modules\Billing\Enums\SubscriptionStatus;
 use Modules\Billing\Enums\WebhookEventType;
@@ -38,11 +40,13 @@ class WebhookIdempotencyTest extends TestCase
         $this->gateway->method('resolvePaymentMethod')->willReturn(
             new PaymentMethodData(
                 providerPaymentMethodId: 'pm_test_123',
-                type: 'card',
-                cardBrand: 'visa',
-                cardLastFour: '4242',
-                cardExpMonth: 12,
-                cardExpYear: 2030,
+                type: PaymentMethodType::Card,
+                details: new PaymentMethodDetails(
+                    brand: 'visa',
+                    last4: '4242',
+                    expMonth: 12,
+                    expYear: 2030,
+                ),
             ),
         );
 

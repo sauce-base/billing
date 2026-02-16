@@ -9,7 +9,9 @@ use Modules\Billing\Data\CheckoutData;
 use Modules\Billing\Data\CheckoutResultData;
 use Modules\Billing\Data\CustomerData;
 use Modules\Billing\Data\PaymentMethodData;
+use Modules\Billing\Data\PaymentMethodDetails;
 use Modules\Billing\Data\WebhookData;
+use Modules\Billing\Enums\PaymentMethodType;
 use Modules\Billing\Enums\WebhookEventType;
 use Modules\Billing\Models\Customer;
 use Modules\Billing\Models\Subscription;
@@ -145,14 +147,38 @@ class StripeGateway implements PaymentGatewayInterface
         }
 
         $pm = $this->stripe->paymentMethods->retrieve($pmId);
+        $type = PaymentMethodType::tryFrom($pm->type) ?? PaymentMethodType::Unknown;
+
+        $details = match ($type) {
+            PaymentMethodType::Card => new PaymentMethodDetails(
+                brand: $pm->card->display_brand ?? $pm->card?->brand,
+                last4: $pm->card?->last4,
+                expMonth: $pm->card?->exp_month,
+                expYear: $pm->card?->exp_year,
+                funding: $pm->card?->funding,
+                wallet: $pm->card?->wallet?->type,
+            ),
+            PaymentMethodType::SepaDebit => new PaymentMethodDetails(
+                last4: $pm->sepa_debit?->last4,
+                country: $pm->sepa_debit?->country,
+            ),
+            PaymentMethodType::UsBankAccount => new PaymentMethodDetails(
+                bankName: $pm->us_bank_account?->bank_name,
+                last4: $pm->us_bank_account?->last4,
+            ),
+            PaymentMethodType::PayPal => new PaymentMethodDetails(
+                email: $pm->paypal?->payer_email,
+            ),
+            PaymentMethodType::Link => new PaymentMethodDetails(
+                email: $pm->link?->email,
+            ),
+            default => new PaymentMethodDetails,
+        };
 
         return new PaymentMethodData(
             providerPaymentMethodId: $pm->id,
-            type: $pm->type,
-            cardBrand: $pm->card?->brand,
-            cardLastFour: $pm->card?->last4,
-            cardExpMonth: $pm->card?->exp_month,
-            cardExpYear: $pm->card?->exp_year,
+            type: $type,
+            details: $details,
         );
     }
 

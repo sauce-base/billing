@@ -41,3 +41,32 @@ export interface CheckoutSession {
     status: string;
     expires_at: string | null;
 }
+
+export type PaymentMethodCategory = 'card' | 'bank' | 'wallet' | 'unknown';
+
+export interface PaymentMethod {
+    type: string;
+    category: PaymentMethodCategory;
+    details: Modules.Billing.Data.PaymentMethodDetails | null;
+}
+
+export interface Subscription {
+    id: number;
+    status: string;
+    current_period_starts_at: string | null;
+    current_period_ends_at: string | null;
+    cancelled_at: string | null;
+    ends_at: string | null;
+    plan_name: string | null;
+    interval: string | null;
+}
+
+export interface Invoice {
+    id: number;
+    number: string | null;
+    total: number;
+    currency: string | null;
+    status: string;
+    paid_at: string | null;
+    hosted_invoice_url: string | null;
+}

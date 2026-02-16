@@ -3,6 +3,7 @@
 namespace Modules\Billing\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Modules\Billing\Enums\PaymentMethodType;
 use Modules\Billing\Models\Customer;
 use Modules\Billing\Models\PaymentMethod;
 
@@ -23,19 +24,18 @@ class PaymentMethodFactory extends Factory
         return [
             'customer_id' => Customer::factory(),
             'provider_payment_method_id' => 'pm_'.fake()->regexify('[A-Za-z0-9]{24}'),
-            'type' => 'card',
-            'card_brand' => fake()->randomElement(['visa', 'mastercard', 'amex']),
-            'card_last_four' => fake()->numerify('####'),
-            'card_exp_month' => fake()->numberBetween(1, 12),
-            'card_exp_year' => now()->addYears(3)->year,
+            'type' => PaymentMethodType::Card,
+            'details' => [
+                'brand' => fake()->randomElement(['visa', 'mastercard', 'amex']),
+                'last4' => fake()->numerify('####'),
+                'expMonth' => fake()->numberBetween(1, 12),
+                'expYear' => now()->addYears(3)->year,
+            ],
             'metadata' => null,
             'is_default' => false,
         ];
     }
 
-    /**
-     * Indicate that this is the default payment method.
-     */
     public function default(): static
     {
         return $this->state(fn (array $attributes) => [
@@ -43,34 +43,52 @@ class PaymentMethodFactory extends Factory
         ]);
     }
 
-    /**
-     * Indicate that the card is expired.
-     */
     public function expired(): static
     {
         return $this->state(fn (array $attributes) => [
-            'card_exp_month' => 1,
-            'card_exp_year' => now()->subYear()->year,
+            'details' => array_merge($attributes['details'] ?? [], [
+                'expMonth' => 1,
+                'expYear' => now()->subYear()->year,
+            ]),
         ]);
     }
 
-    /**
-     * Indicate that the card is a Visa.
-     */
     public function visa(): static
     {
         return $this->state(fn (array $attributes) => [
-            'card_brand' => 'visa',
+            'details' => array_merge($attributes['details'] ?? [], [
+                'brand' => 'visa',
+            ]),
         ]);
     }
 
-    /**
-     * Indicate that the card is a Mastercard.
-     */
     public function mastercard(): static
     {
         return $this->state(fn (array $attributes) => [
-            'card_brand' => 'mastercard',
+            'details' => array_merge($attributes['details'] ?? [], [
+                'brand' => 'mastercard',
+            ]),
+        ]);
+    }
+
+    public function paypal(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => PaymentMethodType::PayPal,
+            'details' => [
+                'email' => fake()->email(),
+            ],
+        ]);
+    }
+
+    public function sepa(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => PaymentMethodType::SepaDebit,
+            'details' => [
+                'last4' => fake()->numerify('####'),
+                'country' => 'DE',
+            ],
         ]);
     }
 }

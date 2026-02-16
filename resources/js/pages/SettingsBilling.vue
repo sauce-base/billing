@@ -21,39 +21,12 @@ import { router } from '@inertiajs/vue3';
 import { Loader2 } from 'lucide-vue-next';
 import { ref } from 'vue';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
-
-interface SubscriptionData {
-    id: number;
-    status: string;
-    current_period_starts_at: string | null;
-    current_period_ends_at: string | null;
-    cancelled_at: string | null;
-    ends_at: string | null;
-    plan_name: string | null;
-    interval: string | null;
-}
-
-interface PaymentMethodData {
-    card_brand: string | null;
-    card_last_four: string | null;
-    card_exp_month: number | null;
-    card_exp_year: number | null;
-}
-
-interface InvoiceData {
-    id: number;
-    number: string | null;
-    total: number;
-    currency: string | null;
-    status: string;
-    paid_at: string | null;
-    hosted_invoice_url: string | null;
-}
+import type { Invoice, PaymentMethod, Subscription } from '../types';
 
 defineProps<{
-    subscription: SubscriptionData | null;
-    paymentMethod: PaymentMethodData | null;
-    invoices: InvoiceData[];
+    subscription: Subscription | null;
+    paymentMethod: PaymentMethod | null;
+    invoices: Invoice[];
     billingPortalUrl: string;
 }>();
 
@@ -84,9 +57,13 @@ function formatInterval(interval: string | null): string {
     return interval === 'year' ? 'Yearly' : 'Monthly';
 }
 
-function capitalizeCardBrand(brand: string | null): string {
-    if (!brand) return '';
-    return brand.charAt(0).toUpperCase() + brand.slice(1);
+function ucfirst(value: string | null | undefined): string {
+    if (!value) return '';
+    return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function pad(value: number | null | undefined): string {
+    return String(value ?? 0).padStart(2, '0');
 }
 
 function statusVariant(
@@ -219,22 +196,79 @@ function resumeSubscription() {
                                 v-if="paymentMethod"
                                 class="mt-1 text-sm text-gray-900 dark:text-white"
                             >
-                                {{
-                                    capitalizeCardBrand(
-                                        paymentMethod.card_brand,
-                                    )
-                                }}
-                                &bull;&bull;&bull;&bull;
-                                {{ paymentMethod.card_last_four }}
-                                <span class="text-gray-500 dark:text-gray-400">
-                                    &middot;
-                                    {{ $t('Expires') }}
+                                <template
+                                    v-if="
+                                        paymentMethod.category === 'card' &&
+                                        paymentMethod.details
+                                    "
+                                >
                                     {{
-                                        String(
-                                            paymentMethod.card_exp_month,
-                                        ).padStart(2, '0')
-                                    }}/{{ paymentMethod.card_exp_year }}
-                                </span>
+                                        ucfirst(
+                                            paymentMethod.details?.brand,
+                                        )
+                                    }}
+                                    &bull;&bull;&bull;&bull;{{
+                                        paymentMethod.details?.last4
+                                    }}
+                                    <span
+                                        v-if="
+                                            paymentMethod.details?.expMonth
+                                        "
+                                        class="text-gray-500 dark:text-gray-400"
+                                    >
+                                        &middot;
+                                        {{ $t('Expires') }}
+                                        {{
+                                            pad(
+                                                paymentMethod.details
+                                                    .expMonth,
+                                            )
+                                        }}/{{
+                                            paymentMethod.details.expYear
+                                        }}
+                                    </span>
+                                </template>
+                                <template
+                                    v-else-if="
+                                        paymentMethod.category ===
+                                            'wallet' &&
+                                        paymentMethod.details
+                                    "
+                                >
+                                    {{ ucfirst(paymentMethod.type) }}
+                                    <span
+                                        v-if="
+                                            paymentMethod.details?.email
+                                        "
+                                    >
+                                        {{
+                                            paymentMethod.details.email
+                                        }}
+                                    </span>
+                                </template>
+                                <template
+                                    v-else-if="
+                                        paymentMethod.category === 'bank' &&
+                                        paymentMethod.details
+                                    "
+                                >
+                                    {{
+                                        paymentMethod.details?.bankName ??
+                                        $t('Bank account')
+                                    }}
+                                    <template
+                                        v-if="
+                                            paymentMethod.details?.last4
+                                        "
+                                    >
+                                        &bull;&bull;&bull;&bull;{{
+                                            paymentMethod.details.last4
+                                        }}
+                                    </template>
+                                </template>
+                                <template v-else>
+                                    {{ $t('Payment method') }}
+                                </template>
                             </p>
                             <p
                                 v-else

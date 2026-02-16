@@ -230,10 +230,7 @@ class BillingService
                 'customer_id' => $customer->id,
                 'provider_payment_method_id' => $data->providerPaymentMethodId,
                 'type' => $data->type,
-                'card_brand' => $data->cardBrand,
-                'card_last_four' => $data->cardLastFour,
-                'card_exp_month' => $data->cardExpMonth,
-                'card_exp_year' => $data->cardExpYear,
+                'details' => $data->details->toArray(),
                 'is_default' => true,
             ]);
         });

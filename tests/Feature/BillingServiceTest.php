@@ -9,9 +9,11 @@ use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutResultData;
 use Modules\Billing\Data\CustomerData;
 use Modules\Billing\Data\PaymentMethodData;
+use Modules\Billing\Data\PaymentMethodDetails;
 use Modules\Billing\Data\WebhookData;
 use Modules\Billing\Enums\CheckoutSessionStatus;
 use Modules\Billing\Enums\Currency;
+use Modules\Billing\Enums\PaymentMethodType;
 use Modules\Billing\Enums\PaymentStatus;
 use Modules\Billing\Enums\SubscriptionStatus;
 use Modules\Billing\Enums\WebhookEventType;
@@ -48,11 +50,13 @@ class BillingServiceTest extends TestCase
         $this->gateway->method('resolvePaymentMethod')->willReturn(
             new PaymentMethodData(
                 providerPaymentMethodId: 'pm_test_123',
-                type: 'card',
-                cardBrand: 'visa',
-                cardLastFour: '4242',
-                cardExpMonth: 12,
-                cardExpYear: 2030,
+                type: PaymentMethodType::Card,
+                details: new PaymentMethodDetails(
+                    brand: 'visa',
+                    last4: '4242',
+                    expMonth: 12,
+                    expYear: 2030,
+                ),
             ),
         );
 
@@ -191,8 +195,6 @@ class BillingServiceTest extends TestCase
         $this->assertNotNull($subscription->payment_method_id);
         $this->assertDatabaseHas('payment_methods', [
             'provider_payment_method_id' => 'pm_test_123',
-            'card_brand' => 'visa',
-            'card_last_four' => '4242',
         ]);
 
         // Checkout now also creates the initial payment for the subscription
@@ -286,7 +288,6 @@ class BillingServiceTest extends TestCase
         $this->assertNotNull($payment->payment_method_id);
         $this->assertDatabaseHas('payment_methods', [
             'provider_payment_method_id' => 'pm_test_123',
-            'card_brand' => 'visa',
         ]);
         $this->assertDatabaseCount('subscriptions', 0);
 
@@ -569,8 +570,6 @@ class BillingServiceTest extends TestCase
         $this->assertNotNull($subscription->payment_method_id);
         $this->assertDatabaseHas('payment_methods', [
             'provider_payment_method_id' => 'pm_test_123',
-            'card_brand' => 'visa',
-            'card_last_four' => '4242',
         ]);
 
         Event::assertDispatched(SubscriptionUpdated::class);
@@ -797,7 +796,6 @@ class BillingServiceTest extends TestCase
         $this->assertDatabaseHas('payment_methods', [
             'provider_payment_method_id' => 'pm_test_123',
             'customer_id' => $customer->id,
-            'card_brand' => 'visa',
         ]);
         $this->assertDatabaseHas('payments', [
             'customer_id' => $customer->id,
@@ -1220,11 +1218,8 @@ class BillingServiceTest extends TestCase
         PaymentMethod::create([
             'customer_id' => $customer->id,
             'provider_payment_method_id' => 'pm_test_123',
-            'type' => 'card',
-            'card_brand' => 'visa',
-            'card_last_four' => '4242',
-            'card_exp_month' => 12,
-            'card_exp_year' => 2030,
+            'type' => PaymentMethodType::Card,
+            'details' => ['brand' => 'visa', 'last4' => '4242', 'expMonth' => 12, 'expYear' => 2030],
             'is_default' => true,
         ]);
 
@@ -1261,11 +1256,8 @@ class BillingServiceTest extends TestCase
         $oldPm = PaymentMethod::create([
             'customer_id' => $customer->id,
             'provider_payment_method_id' => 'pm_old_default',
-            'type' => 'card',
-            'card_brand' => 'mastercard',
-            'card_last_four' => '5555',
-            'card_exp_month' => 6,
-            'card_exp_year' => 2028,
+            'type' => PaymentMethodType::Card,
+            'details' => ['brand' => 'mastercard', 'last4' => '5555', 'expMonth' => 6, 'expYear' => 2028],
             'is_default' => true,
         ]);
 
