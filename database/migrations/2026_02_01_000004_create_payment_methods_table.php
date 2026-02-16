@@ -24,11 +24,8 @@ return new class extends Migration
             // Type
             $table->string('type');
 
-            // Card details (for card type)
-            $table->string('card_brand')->nullable();
-            $table->string('card_last_four', 4)->nullable();
-            $table->unsignedSmallInteger('card_exp_month')->nullable();
-            $table->unsignedSmallInteger('card_exp_year')->nullable();
+            // Payment method details (gateway-agnostic)
+            $table->json('details')->nullable();
 
             // Configuration
             $table->json('metadata')->nullable();

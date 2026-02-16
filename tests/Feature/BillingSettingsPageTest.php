@@ -84,7 +84,7 @@ class BillingSettingsPageTest extends TestCase
         $customer = Customer::factory()->create(['user_id' => $user->id]);
         PaymentMethod::factory()->visa()->default()->create([
             'customer_id' => $customer->id,
-            'card_last_four' => '4242',
+            'details' => ['brand' => 'visa', 'last4' => '4242', 'expMonth' => 12, 'expYear' => 2030],
         ]);
 
         $response = $this->actingAs($user)->get(route('settings.billing'));
@@ -92,8 +92,10 @@ class BillingSettingsPageTest extends TestCase
         $response->assertOk();
         $response->assertInertia(
             fn (AssertableInertia $page) => $page
-                ->where('paymentMethod.card_brand', 'visa')
-                ->where('paymentMethod.card_last_four', '4242')
+                ->where('paymentMethod.type', 'card')
+                ->where('paymentMethod.category', 'card')
+                ->where('paymentMethod.details.brand', 'visa')
+                ->where('paymentMethod.details.last4', '4242')
         );
     }
 }

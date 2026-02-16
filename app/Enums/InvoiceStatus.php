@@ -2,6 +2,9 @@
 
 namespace Modules\Billing\Enums;
 
+use Spatie\TypeScriptTransformer\Attributes\TypeScript;
+
+#[TypeScript]
 enum InvoiceStatus: string
 {
     case Draft = 'draft';

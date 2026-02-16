@@ -5,6 +5,7 @@ namespace Modules\Billing\Contracts;
 use Illuminate\Http\Request;
 use Modules\Billing\Data\CheckoutData;
 use Modules\Billing\Data\CheckoutResultData;
+use Modules\Billing\Data\CustomerData;
 use Modules\Billing\Data\PaymentMethodData;
 use Modules\Billing\Data\WebhookData;
 use Modules\Billing\Models\Customer;
@@ -12,7 +13,7 @@ use Modules\Billing\Models\Subscription;
 
 interface PaymentGatewayInterface
 {
-    public function createCustomer(string $name, string $email): string;
+    public function createCustomer(CustomerData $data): Customer;
 
     public function createCheckoutSession(CheckoutData $data): CheckoutResultData;
 

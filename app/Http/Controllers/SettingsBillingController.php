@@ -67,10 +67,9 @@ class SettingsBillingController
                 'interval' => $subscription->price?->interval,
             ] : null,
             'paymentMethod' => $defaultPaymentMethod ? [
-                'card_brand' => $defaultPaymentMethod->card_brand,
-                'card_last_four' => $defaultPaymentMethod->card_last_four,
-                'card_exp_month' => $defaultPaymentMethod->card_exp_month,
-                'card_exp_year' => $defaultPaymentMethod->card_exp_year,
+                'type' => $defaultPaymentMethod->type->value,
+                'category' => $defaultPaymentMethod->type->category(),
+                'details' => $defaultPaymentMethod->details,
             ] : null,
             'invoices' => $invoices->map(fn (Invoice $invoice) => [
                 'id' => $invoice->id,

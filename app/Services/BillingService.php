@@ -7,8 +7,10 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Modules\Billing\Data\AddressData;
 use Modules\Billing\Data\CheckoutData;
 use Modules\Billing\Data\CheckoutResultData;
+use Modules\Billing\Data\CustomerData;
 use Modules\Billing\Data\WebhookData;
 use Modules\Billing\Enums\CheckoutSessionStatus;
 use Modules\Billing\Enums\Currency;
@@ -153,31 +155,47 @@ class BillingService
         $name = $billingDetails['name'] ?? $user->name;
         $email = $billingDetails['email'] ?? $user->email;
         $phone = $billingDetails['phone'] ?? null;
-        $address = $billingDetails['address'] ?? null;
+        /** @var array<string, string>|null $rawAddress */
+        $rawAddress = $billingDetails['address'] ?? null;
+
+        $addressData = $rawAddress && ! empty($rawAddress['country'])
+            ? new AddressData(
+                country: $rawAddress['country'],
+                line1: $rawAddress['line1'] ?? $rawAddress['street'] ?? null,
+                line2: $rawAddress['line2'] ?? null,
+                city: $rawAddress['city'] ?? null,
+                state: $rawAddress['state'] ?? null,
+                postalCode: $rawAddress['postal_code'] ?? null,
+            )
+            : null;
 
         $customer = Customer::where('user_id', $user->id)->first();
 
         if ($customer) {
-            $customer->update(array_filter([
+            $updates = array_filter([
                 'name' => $name,
                 'email' => $email,
                 'phone' => $phone,
-                'address' => $address,
-            ], fn ($v) => $v !== null));
+            ], fn ($v) => $v !== null);
+
+            if ($addressData) {
+                $updates['address'] = $addressData->toArray();
+            }
+
+            $customer->update($updates);
 
             return $customer;
         }
 
-        $providerCustomerId = $this->manager->driver($provider)->createCustomer($name, $email);
+        $customerData = new CustomerData(
+            user: $user,
+            name: $name,
+            email: $email,
+            phone: $phone,
+            address: $addressData,
+        );
 
-        return Customer::create([
-            'user_id' => $user->id,
-            'provider_customer_id' => $providerCustomerId,
-            'email' => $email,
-            'name' => $name,
-            'phone' => $phone,
-            'address' => $address,
-        ]);
+        return $this->manager->driver($provider)->createCustomer($customerData);
     }
 
     private function ensurePaymentMethod(Customer $customer, string $providerId, string $provider): ?PaymentMethod
@@ -212,10 +230,7 @@ class BillingService
                 'customer_id' => $customer->id,
                 'provider_payment_method_id' => $data->providerPaymentMethodId,
                 'type' => $data->type,
-                'card_brand' => $data->cardBrand,
-                'card_last_four' => $data->cardLastFour,
-                'card_exp_month' => $data->cardExpMonth,
-                'card_exp_year' => $data->cardExpYear,
+                'details' => $data->details->toArray(),
                 'is_default' => true,
             ]);
         });
