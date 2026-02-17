@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Modules\Billing\Data\CheckoutData;
 use Modules\Billing\Data\CheckoutResultData;
 use Modules\Billing\Data\CustomerData;
-use Modules\Billing\Data\PaymentMethodData;
 use Modules\Billing\Data\WebhookData;
 use Modules\Billing\Models\Customer;
 use Modules\Billing\Models\Subscription;
@@ -24,10 +23,4 @@ interface PaymentGatewayInterface
     public function getManagementUrl(Customer $customer): string;
 
     public function verifyAndParseWebhook(Request $request): WebhookData;
-
-    public function resolvePaymentMethod(string $providerId): ?PaymentMethodData;
-
-    public function retrieveCheckoutSession(string $sessionId): array;
-
-    public function retrieveSubscription(string $subscriptionId): array;
 }
