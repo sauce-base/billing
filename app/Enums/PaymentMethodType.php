@@ -2,10 +2,11 @@
 
 namespace Modules\Billing\Enums;
 
+use Filament\Support\Contracts\HasLabel;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 #[TypeScript]
-enum PaymentMethodType: string
+enum PaymentMethodType: string implements HasLabel
 {
     case Card = 'card';
     case PayPal = 'paypal';
@@ -19,6 +20,24 @@ enum PaymentMethodType: string
     case Bancontact = 'bancontact';
     case Ideal = 'ideal';
     case Unknown = 'unknown';
+
+    public function getLabel(): string
+    {
+        return match ($this) {
+            self::Card          => 'Card',
+            self::PayPal        => 'PayPal',
+            self::SepaDebit     => 'SEPA Debit',
+            self::UsBankAccount => 'US Bank Account',
+            self::BacsDebit     => 'Bacs Debit',
+            self::Link          => 'Link',
+            self::CashApp       => 'Cash App',
+            self::ApplePay      => 'Apple Pay',
+            self::GooglePay     => 'Google Pay',
+            self::Bancontact    => 'Bancontact',
+            self::Ideal         => 'iDEAL',
+            self::Unknown       => 'Unknown',
+        };
+    }
 
     public function category(): string
     {
