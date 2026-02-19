@@ -32,6 +32,7 @@ use Modules\Billing\Models\Payment;
 use Modules\Billing\Models\PaymentMethod;
 use Modules\Billing\Models\Subscription;
 use Modules\Billing\Models\WebhookEvent;
+use Modules\Billing\Services\Gateways\StripeGateway;
 
 class BillingService
 {
@@ -118,6 +119,15 @@ class BillingService
 
         try {
             $gateway = $this->manager->driver();
+
+            if (! $gateway instanceof StripeGateway) {
+                Log::info('fulfillCheckoutIfNeeded skipped: gateway is not Stripe', [
+                    'session_id' => $providerSessionId,
+                ]);
+
+                return;
+            }
+
             $stripeSession = $gateway->retrieveCheckoutSession($providerSessionId);
         } catch (\Throwable $e) {
             Log::warning('Failed to retrieve checkout session for redirect fulfillment', [
@@ -200,7 +210,13 @@ class BillingService
 
     private function ensurePaymentMethod(Customer $customer, string $providerId, string $provider): ?PaymentMethod
     {
-        $data = $this->manager->driver($provider)->resolvePaymentMethod($providerId);
+        $gateway = $this->manager->driver($provider);
+
+        if (! $gateway instanceof StripeGateway) {
+            return null;
+        }
+
+        $data = $gateway->resolvePaymentMethod($providerId);
 
         if (! $data) {
             return null;
@@ -577,7 +593,13 @@ class BillingService
     private function syncSubscriptionPeriod(Subscription $subscription, string $providerSubscriptionId, string $provider): void
     {
         try {
-            $stripeSubscription = $this->manager->driver($provider)->retrieveSubscription($providerSubscriptionId);
+            $gateway = $this->manager->driver($provider);
+
+            if (! $gateway instanceof StripeGateway) {
+                return;
+            }
+
+            $stripeSubscription = $gateway->retrieveSubscription($providerSubscriptionId);
 
             $updates = [];
             if (isset($stripeSubscription['current_period_start'])) {

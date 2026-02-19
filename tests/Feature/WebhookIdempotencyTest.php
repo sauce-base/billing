@@ -4,7 +4,6 @@ namespace Modules\Billing\Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\PaymentMethodData;
 use Modules\Billing\Data\PaymentMethodDetails;
 use Modules\Billing\Data\WebhookData;
@@ -20,6 +19,7 @@ use Modules\Billing\Models\CheckoutSession;
 use Modules\Billing\Models\Customer;
 use Modules\Billing\Models\WebhookEvent;
 use Modules\Billing\Services\BillingService;
+use Modules\Billing\Services\Gateways\StripeGateway;
 use Modules\Billing\Services\PaymentGatewayManager;
 use Tests\TestCase;
 
@@ -29,14 +29,14 @@ class WebhookIdempotencyTest extends TestCase
 
     private BillingService $billingService;
 
-    /** @var PaymentGatewayInterface&\PHPUnit\Framework\MockObject\MockObject */
-    private PaymentGatewayInterface $gateway;
+    /** @var StripeGateway&\PHPUnit\Framework\MockObject\MockObject */
+    private StripeGateway $gateway;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->gateway = $this->createMock(PaymentGatewayInterface::class);
+        $this->gateway = $this->createMock(StripeGateway::class);
         $this->gateway->method('resolvePaymentMethod')->willReturn(
             new PaymentMethodData(
                 providerPaymentMethodId: 'pm_test_123',

@@ -25,7 +25,7 @@ class CheckoutController
         $session = CheckoutSession::create([
             'price_id' => $validated['price_id'],
             'status' => CheckoutSessionStatus::Pending,
-            'expires_at' => now()->addHours(24),
+            'expires_at' => now()->addMinutes(config('billing.checkout.expire_after_minutes', 1440)),
         ]);
 
         return redirect()->route('billing.checkout', $session);

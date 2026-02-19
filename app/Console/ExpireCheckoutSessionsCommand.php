@@ -14,11 +14,21 @@ class ExpireCheckoutSessionsCommand extends Command
 
     public function handle(): int
     {
-        $count = CheckoutSession::where('status', CheckoutSessionStatus::Pending)
+        $expired = CheckoutSession::where('status', CheckoutSessionStatus::Pending)
             ->where('expires_at', '<', now())
             ->update(['status' => CheckoutSessionStatus::Expired]);
 
-        $this->info("Marked {$count} checkout session(s) as expired.");
+        $abandonedBefore = now()->subMinutes(config('billing.checkout.abandon_after_minutes', 60));
+
+        $abandoned = CheckoutSession::where('status', CheckoutSessionStatus::Pending)
+            ->where('created_at', '<', $abandonedBefore)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
+            ->update(['status' => CheckoutSessionStatus::Abandoned]);
+
+        $this->info("Marked {$expired} session(s) as expired, {$abandoned} as abandoned.");
 
         return self::SUCCESS;
     }

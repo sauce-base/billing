@@ -16,9 +16,13 @@ class SubscriptionController
 
     public function cancel(): RedirectResponse
     {
+        /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        $subscription = $user->billingCustomer
+        /** @var \Modules\Billing\Models\Customer|null $customer */
+        $customer = $user->billingCustomer;
+
+        $subscription = $customer
             ?->subscriptions()
             ->whereIn('status', [SubscriptionStatus::Active, SubscriptionStatus::PastDue])
             ->latest()
@@ -44,9 +48,13 @@ class SubscriptionController
 
     public function resume(): RedirectResponse
     {
+        /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        $subscription = $user->billingCustomer
+        /** @var \Modules\Billing\Models\Customer|null $customer */
+        $customer = $user->billingCustomer;
+
+        $subscription = $customer
             ?->subscriptions()
             ->where('status', SubscriptionStatus::Active)
             ->whereNotNull('cancelled_at')

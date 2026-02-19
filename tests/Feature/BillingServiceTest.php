@@ -5,7 +5,6 @@ namespace Modules\Billing\Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use Modules\Billing\Contracts\PaymentGatewayInterface;
 use Modules\Billing\Data\CheckoutResultData;
 use Modules\Billing\Data\CustomerData;
 use Modules\Billing\Data\PaymentMethodData;
@@ -30,6 +29,7 @@ use Modules\Billing\Models\PaymentMethod;
 use Modules\Billing\Models\Price;
 use Modules\Billing\Models\Subscription;
 use Modules\Billing\Services\BillingService;
+use Modules\Billing\Services\Gateways\StripeGateway;
 use Modules\Billing\Services\PaymentGatewayManager;
 use Tests\TestCase;
 
@@ -39,14 +39,14 @@ class BillingServiceTest extends TestCase
 
     private BillingService $billingService;
 
-    /** @var PaymentGatewayInterface&\PHPUnit\Framework\MockObject\MockObject */
-    private PaymentGatewayInterface $gateway;
+    /** @var StripeGateway&\PHPUnit\Framework\MockObject\MockObject */
+    private StripeGateway $gateway;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->gateway = $this->createMock(PaymentGatewayInterface::class);
+        $this->gateway = $this->createMock(StripeGateway::class);
         $this->gateway->method('resolvePaymentMethod')->willReturn(
             new PaymentMethodData(
                 providerPaymentMethodId: 'pm_test_123',
