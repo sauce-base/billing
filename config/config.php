@@ -38,4 +38,12 @@ return [
         'enabled' => env('BILLING_LOGGING_ENABLED', true),
         'channel' => env('BILLING_LOG_CHANNEL', 'stack'),
     ],
+
+    'checkout' => [
+        // Minutes before a pending session with no action is marked Abandoned. Default: 60 (1 hour).
+        'abandon_after_minutes' => env('BILLING_CHECKOUT_ABANDON_MINUTES', 60),
+
+        // Minutes before a pending session is fully Expired. Default: 1440 (24h) — matches Stripe's TTL.
+        'expire_after_minutes' => env('BILLING_CHECKOUT_EXPIRE_MINUTES', 1440),
+    ],
 ];

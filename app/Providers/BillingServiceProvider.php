@@ -60,7 +60,7 @@ class BillingServiceProvider extends ModuleServiceProvider
 
     protected function configureSchedules(Schedule $schedule): void
     {
-        $schedule->command('billing:expire-checkout-sessions')->hourly();
+        $schedule->command('billing:expire-checkout-sessions')->everyThirtyMinutes();
     }
 
     protected function registerPolicies(): void
