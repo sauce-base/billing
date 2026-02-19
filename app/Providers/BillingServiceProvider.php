@@ -41,6 +41,8 @@ class BillingServiceProvider extends ModuleServiceProvider
     {
         parent::boot();
 
+        $this->loadViewsFrom(module_path($this->name, 'resources/views'), $this->nameLower);
+
         // Register policies
         $this->registerPolicies();
     }
