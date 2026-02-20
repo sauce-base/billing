@@ -4,8 +4,8 @@
         <div class="relative">
             {{-- Filter bar: normal flow on mobile, absolute into header row on desktop --}}
             <div class="mb-4 flex justify-end sm:absolute sm:right-0 sm:-top-16 sm:mb-0">
-                <div class="flex w-full flex-wrap items-center gap-2 sm:max-w-sm">
-                    <x-filament::input.wrapper class="w-full">
+                <div class="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                    <x-filament::input.wrapper class="w-44 shrink-0">
                         <x-filament::input.select wire:model.live="preset">
                             @foreach ($this->getPresetOptions() as $value => $label)
                                 <option value="{{ $value }}">{{ $label }}</option>
@@ -14,11 +14,11 @@
                     </x-filament::input.wrapper>
 
                     @if ($preset === 'custom')
-                        <x-filament::input.wrapper class="flex-1">
+                        <x-filament::input.wrapper class="w-36 shrink-0">
                             <x-filament::input type="date" wire:model.live="customStart" />
                         </x-filament::input.wrapper>
-                        <span class="text-sm text-gray-500 dark:text-gray-400">→</span>
-                        <x-filament::input.wrapper class="flex-1">
+                        <span class="shrink-0 text-sm text-gray-500 dark:text-gray-400">→</span>
+                        <x-filament::input.wrapper class="w-36 shrink-0">
                             <x-filament::input type="date" wire:model.live="customEnd" />
                         </x-filament::input.wrapper>
                     @endif

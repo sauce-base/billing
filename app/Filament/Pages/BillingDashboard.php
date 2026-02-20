@@ -5,6 +5,7 @@ namespace Modules\Billing\Filament\Pages;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Livewire\Attributes\Url;
 
 class BillingDashboard extends Page
 {
@@ -14,10 +15,13 @@ class BillingDashboard extends Page
 
     protected string $view = 'billing::filament.pages.billing-dashboard';
 
+    #[Url]
     public string $preset = '30d';
 
+    #[Url]
     public ?string $customStart = null;
 
+    #[Url]
     public ?string $customEnd = null;
 
     public string $startDate = '';
@@ -36,7 +40,15 @@ class BillingDashboard extends Page
 
     public function mount(): void
     {
-        $this->applyPreset('30d');
+        if ($this->preset === 'custom' && $this->customStart && $this->customEnd) {
+            $start = \Carbon\Carbon::parse($this->customStart)->startOfDay()->toDateTimeString();
+            $end = \Carbon\Carbon::parse($this->customEnd)->endOfDay()->toDateTimeString();
+            $this->startDate = $start;
+            $this->endDate = $end;
+            $this->dispatch('billing-filter-updated', start: $start, end: $end);
+        } else {
+            $this->applyPreset($this->preset !== 'custom' ? $this->preset : '30d');
+        }
     }
 
     public function updatedPreset(string $value): void
