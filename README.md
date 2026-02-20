@@ -1,5 +1,5 @@
 # Billing Module
 
-This module is currently under development. Documentation will be available soon.
+Subscription management, checkout sessions, and payment processing for Saucebase.
 
-Stay tuned for updates!
+**[Documentation →](https://sauce-base.github.io/docs/modules/billing)**
