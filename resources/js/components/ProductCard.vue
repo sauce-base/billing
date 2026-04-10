@@ -50,7 +50,7 @@ watch(priceKey, () => {
         class="relative flex h-full flex-col rounded-3xl p-8 shadow-lg"
         :class="
             product.metadata?.badge || product.is_highlighted
-                ? 'ring-primary scale-[1.05] bg-white/70 shadow-lg ring-3 dark:bg-gray-900/70'
+                ? 'ring-primary bg-white/70 shadow-lg ring-3 lg:scale-[1.05] dark:bg-gray-900/70'
                 : 'bg-white/70 dark:bg-gray-900/60 dark:ring-white/10'
         "
     >
@@ -87,7 +87,7 @@ watch(priceKey, () => {
             <!-- Original price + discount badge -->
             <div
                 v-if="price?.metadata?.original_price || price?.metadata?.badge"
-                class="mb-1 flex items-center gap-2"
+                class="mb-1 flex items-center gap-2 h-8"
             >
                 <span
                     v-if="price?.metadata?.original_price"
@@ -107,8 +107,7 @@ watch(priceKey, () => {
                     {{ price.metadata.badge }}
                 </span>
             </div>
-            <div v-else>&nbsp;</div>
-
+            <div v-else class="h-9" />
             <!-- Current price -->
             <div
                 class="flex items-baseline gap-x-1 transition-transform duration-150"
