@@ -13,5 +13,5 @@ jobs:
     test:
         uses: saucebase-dev/saucebase/.github/workflows/test-module.yml@main
         with:
-            module: Billing
+            module: billing
             dependencies: saucebase/auth
