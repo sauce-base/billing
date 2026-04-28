@@ -22,6 +22,11 @@ class BillingPlugin implements Plugin
         return 'billing';
     }
 
+    public static function getNavigationGroupSort(): int
+    {
+        return 1;
+    }
+
     public function boot(Panel $panel): void
     {
         $panel->navigationGroups([
