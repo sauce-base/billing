@@ -18,6 +18,12 @@ tasks:
         cmd: npx playwright test --project="@billing*" {{.CLI_ARGS}}
         interactive: true
 
+    # ── Database ──────────────────────────────────────────────────
+
+    db:seed:
+        desc: Seed the Billing module database
+        cmd: php artisan modules:seed --module=billing
+
     # ── Code Generation ────────────────────────────────────────────
 
     types:generate:
