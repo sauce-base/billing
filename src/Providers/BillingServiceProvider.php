@@ -11,14 +11,6 @@ use Modules\Billing\Services\PaymentGatewayManager;
 
 class BillingServiceProvider extends ModuleServiceProvider
 {
-    protected string $name = 'Billing';
-
-    protected string $nameLower = 'billing';
-
-    protected array $providers = [
-        RouteServiceProvider::class,
-    ];
-
     protected array $commands = [
         ExpireCheckoutSessionsCommand::class,
     ];
@@ -40,7 +32,7 @@ class BillingServiceProvider extends ModuleServiceProvider
     {
         parent::boot();
 
-        $this->loadViewsFrom(module_path($this->name, 'resources/views'), $this->nameLower);
+        $this->loadViewsFrom(module_path('billing', 'resources/views'), 'billing');
     }
 
     /**
@@ -50,7 +42,7 @@ class BillingServiceProvider extends ModuleServiceProvider
     {
         parent::registerConfig();
 
-        $this->mergeConfigFrom(module_path($this->name, 'config/services.php'), 'services');
+        $this->mergeConfigFrom(module_path('billing', 'config/services.php'), 'services');
     }
 
     protected function configureSchedules(Schedule $schedule): void
