@@ -110,6 +110,6 @@ function getToggleLabel(interval: string): string {
             />
         </div>
 
-       <slot name="footer" />
+        <slot name="footer" />
     </section>
 </template>
