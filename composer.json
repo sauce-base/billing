@@ -2,6 +2,7 @@
     "name": "saucebase/billing",
     "description": "Payment gateway and subscription management module for Saucebase",
     "type": "saucebase-module",
+    "version": "1.7.0",
     "authors": [
         {
             "name": "Saucebase",
@@ -14,17 +15,22 @@
         "stripe/stripe-php": "^19.2",
         "spatie/laravel-typescript-transformer": "^2.5"
     },
+    "license": "proprietary",
+    "minimum-stability": "stable",
     "extra": {
         "laravel": {
-            "providers": [],
+            "providers": [
+                "Modules\\Billing\\Providers\\BillingServiceProvider"
+            ],
             "aliases": {}
         }
     },
     "autoload": {
         "psr-4": {
-            "Modules\\Billing\\": "app/",
+            "Modules\\Billing\\": "src/",
             "Modules\\Billing\\Database\\Factories\\": "database/factories/",
-            "Modules\\Billing\\Database\\Seeders\\": "database/seeders/"
+            "Modules\\Billing\\Database\\Seeders\\": "database/seeders/",
+            "Modules\\Billing\\Tests\\Support\\": "tests/Support/"
         }
     },
     "autoload-dev": {
