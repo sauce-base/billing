@@ -10,10 +10,7 @@
         }
     ],
     "require": {
-        "php": "^8.4",
-        "spatie/laravel-data": "^4.0",
-        "stripe/stripe-php": "^19.2",
-        "spatie/laravel-typescript-transformer": "^2.5"
+        "stripe/stripe-php": "^20.2"
     },
     "license": "proprietary",
     "minimum-stability": "stable",
