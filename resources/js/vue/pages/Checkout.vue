@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button';
 import InputField from '@/components/ui/input/InputField.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import type { CheckoutSession } from '@modules/Billing/resources/js/types';
+import type { CheckoutSession } from '@modules/billing/resources/js/types';
 import { computed } from 'vue';
 import CheckoutLayout from '../layouts/CheckoutLayout.vue';
 import { getIntervalDisplay } from '../utils/intervals';
