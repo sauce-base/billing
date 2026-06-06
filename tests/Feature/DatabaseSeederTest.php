@@ -12,8 +12,8 @@ class DatabaseSeederTest extends TestCase
 
     public function test_module_database_seeder_runs(): void
     {
-        $this->seed(DatabaseSeeder::class);
+        $this->expectNotToPerformAssertions();
 
-        $this->assertTrue(true);
+        $this->seed(DatabaseSeeder::class);
     }
 }

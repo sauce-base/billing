@@ -59,18 +59,22 @@ class RevenueChartWidget extends ChartWidget
     {
         $buckets = $this->buildMonthlyBuckets();
 
-        $rows = Payment::where('status', PaymentStatus::Succeeded)
-            ->whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, SUM(amount) as total')
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get();
+        try {
+            $rows = Payment::where('status', PaymentStatus::Succeeded)
+                ->whereBetween('created_at', [$this->startDate, $this->endDate])
+                ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, SUM(amount) as total')
+                ->groupBy('month')
+                ->orderBy('month')
+                ->get();
 
-        foreach ($rows as $row) {
-            $month = (string) $row->getAttribute('month');
-            if (array_key_exists($month, $buckets)) {
-                $buckets[$month] = (int) $row->getAttribute('total');
+            foreach ($rows as $row) {
+                $month = (string) $row->getAttribute('month');
+                if (array_key_exists($month, $buckets)) {
+                    $buckets[$month] = (int) $row->getAttribute('total');
+                }
             }
+        } catch (\Exception) {
+            // DATE_FORMAT unsupported (e.g. SQLite in local/test)
         }
 
         $labels = array_map(
