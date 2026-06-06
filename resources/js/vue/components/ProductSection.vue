@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
-import type { Product } from '@modules/Billing/resources/js/types';
+import type { Product } from '@modules/billing/resources/js/types';
 import {
     getIntervalLabel,
     matchesInterval,
