@@ -73,8 +73,8 @@ class RevenueChartWidget extends ChartWidget
                     $buckets[$month] = (int) $row->getAttribute('total');
                 }
             }
-        } catch (\Exception) {
-            // DATE_FORMAT unsupported (e.g. SQLite in local/test)
+        } catch (\Exception $e) {
+            report($e);
         }
 
         $labels = array_map(

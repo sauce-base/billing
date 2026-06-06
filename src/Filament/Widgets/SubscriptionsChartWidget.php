@@ -58,17 +58,21 @@ class SubscriptionsChartWidget extends ChartWidget
     {
         $buckets = $this->buildMonthlyBuckets();
 
-        $rows = Subscription::whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, COUNT(*) as total')
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get();
+        try {
+            $rows = Subscription::whereBetween('created_at', [$this->startDate, $this->endDate])
+                ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, COUNT(*) as total')
+                ->groupBy('month')
+                ->orderBy('month')
+                ->get();
 
-        foreach ($rows as $row) {
-            $month = (string) $row->getAttribute('month');
-            if (array_key_exists($month, $buckets)) {
-                $buckets[$month] = (int) $row->getAttribute('total');
+            foreach ($rows as $row) {
+                $month = (string) $row->getAttribute('month');
+                if (array_key_exists($month, $buckets)) {
+                    $buckets[$month] = (int) $row->getAttribute('total');
+                }
             }
+        } catch (\Exception $e) {
+            report($e);
         }
 
         $labels = array_map(
