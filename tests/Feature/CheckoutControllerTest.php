@@ -47,7 +47,7 @@ class CheckoutControllerTest extends TestCase
 
         $manager = $this->createMock(PaymentGatewayManager::class);
         $manager->method('driver')->willReturn($gateway);
-        $this->app->instance(PaymentGatewayManager::class, $manager);
+        app()->instance(PaymentGatewayManager::class, $manager);
     }
 
     public function test_checkout_requires_authentication(): void

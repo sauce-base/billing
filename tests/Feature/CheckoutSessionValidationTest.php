@@ -38,7 +38,7 @@ class CheckoutSessionValidationTest extends TestCase
 
         $manager = $this->createMock(PaymentGatewayManager::class);
         $manager->method('driver')->willReturn($gateway);
-        $this->app->instance(PaymentGatewayManager::class, $manager);
+        app()->instance(PaymentGatewayManager::class, $manager);
     }
 
     public function test_show_rejects_expired_checkout_session(): void

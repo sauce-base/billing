@@ -26,7 +26,7 @@ class SubscriptionCancelTest extends TestCase
 
         $manager = $this->createMock(PaymentGatewayManager::class);
         $manager->method('driver')->willReturn($this->gateway);
-        $this->app->instance(PaymentGatewayManager::class, $manager);
+        app()->instance(PaymentGatewayManager::class, $manager);
     }
 
     public function test_cancel_subscription_requires_auth(): void
