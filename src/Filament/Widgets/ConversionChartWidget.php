@@ -100,7 +100,7 @@ class ConversionChartWidget extends ChartWidget
                     $buckets[$month] = round($completed / $total * 100, 1);
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             report($e);
         }
 

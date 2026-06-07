@@ -71,7 +71,7 @@ class SubscriptionsChartWidget extends ChartWidget
                     $buckets[$month] = (int) $row->getAttribute('total');
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             report($e);
         }
 
