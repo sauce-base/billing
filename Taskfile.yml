@@ -22,10 +22,10 @@ tasks:
 
     db:seed:
         desc: Seed the Billing module database
-        cmd: php artisan modules:seed --module=billing
+        cmd: '{{.APP}} php artisan modules:seed --module=billing'
 
     # ── Code Generation ────────────────────────────────────────────
 
     types:generate:
         desc: Generate TypeScript types from PHP DTOs and enums
-        cmd: php artisan module:generate-types billing
+        cmd: '{{.APP}} php artisan module:generate-types billing'

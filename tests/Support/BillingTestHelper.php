@@ -31,7 +31,7 @@ class BillingTestHelper
         // --- Active subscriber ---
         $subscriber = User::firstOrCreate(
             ['email' => 'subscriber@example.com'],
-            ['name' => 'Subscriber User', 'password' => Hash::make('secretsauce'), 'email_verified_at' => now()],
+            ['name' => 'Subscriber User', 'password' => Hash::make('password'), 'email_verified_at' => now()],
         );
 
         $subscriber->assignRole('user');
@@ -56,7 +56,7 @@ class BillingTestHelper
         // --- Cancelled subscriber (pending cancellation) ---
         $cancelled = User::firstOrCreate(
             ['email' => 'cancelled@example.com'],
-            ['name' => 'Cancelled User', 'password' => Hash::make('secretsauce'), 'email_verified_at' => now()],
+            ['name' => 'Cancelled User', 'password' => Hash::make('password'), 'email_verified_at' => now()],
         );
 
         $cancelled->assignRole('user');

@@ -65,9 +65,9 @@ class BillingServiceTest extends TestCase
 
         $manager = $this->createMock(PaymentGatewayManager::class);
         $manager->method('driver')->willReturn($this->gateway);
-        $this->app->instance(PaymentGatewayManager::class, $manager);
+        app()->instance(PaymentGatewayManager::class, $manager);
 
-        $this->billingService = $this->app->make(BillingService::class);
+        $this->billingService = app()->make(BillingService::class);
     }
 
     public function test_process_checkout_creates_customer(): void

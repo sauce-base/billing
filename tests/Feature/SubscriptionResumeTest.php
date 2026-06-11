@@ -26,7 +26,7 @@ class SubscriptionResumeTest extends TestCase
 
         $manager = $this->createMock(PaymentGatewayManager::class);
         $manager->method('driver')->willReturn($this->gateway);
-        $this->app->instance(PaymentGatewayManager::class, $manager);
+        app()->instance(PaymentGatewayManager::class, $manager);
     }
 
     public function test_resume_subscription_requires_auth(): void

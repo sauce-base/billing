@@ -77,27 +77,31 @@ class ConversionChartWidget extends ChartWidget
     {
         $buckets = $this->buildMonthlyBuckets();
 
-        $rows = CheckoutSession::whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->whereIn('status', [
-                CheckoutSessionStatus::Completed->value,
-                CheckoutSessionStatus::Abandoned->value,
-                CheckoutSessionStatus::Expired->value,
-            ])
-            ->selectRaw(
-                'DATE_FORMAT(created_at, "%Y-%m") as month, SUM(status = ?) as completed, COUNT(*) as total',
-                [CheckoutSessionStatus::Completed->value]
-            )
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get();
+        try {
+            $rows = CheckoutSession::whereBetween('created_at', [$this->startDate, $this->endDate])
+                ->whereIn('status', [
+                    CheckoutSessionStatus::Completed->value,
+                    CheckoutSessionStatus::Abandoned->value,
+                    CheckoutSessionStatus::Expired->value,
+                ])
+                ->selectRaw(
+                    'DATE_FORMAT(created_at, "%Y-%m") as month, SUM(status = ?) as completed, COUNT(*) as total',
+                    [CheckoutSessionStatus::Completed->value]
+                )
+                ->groupBy('month')
+                ->orderBy('month')
+                ->get();
 
-        foreach ($rows as $row) {
-            $month = (string) $row->getAttribute('month');
-            $total = (int) $row->getAttribute('total');
-            $completed = (int) $row->getAttribute('completed');
-            if (array_key_exists($month, $buckets) && $total > 0) {
-                $buckets[$month] = round($completed / $total * 100, 1);
+            foreach ($rows as $row) {
+                $month = (string) $row->getAttribute('month');
+                $total = (int) $row->getAttribute('total');
+                $completed = (int) $row->getAttribute('completed');
+                if (array_key_exists($month, $buckets) && $total > 0) {
+                    $buckets[$month] = round($completed / $total * 100, 1);
+                }
             }
+        } catch (\Throwable $e) {
+            report($e);
         }
 
         $labels = array_map(
