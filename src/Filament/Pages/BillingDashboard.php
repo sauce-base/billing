@@ -12,7 +12,7 @@ class BillingDashboard extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBarSquare;
 
-    protected static ?int $navigationSort = 0;
+    protected static ?int $navigationSort = 200;
 
     protected string $view = 'billing::filament.pages.billing-dashboard';
 

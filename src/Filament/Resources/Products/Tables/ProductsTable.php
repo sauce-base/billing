@@ -36,14 +36,11 @@ class ProductsTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                ToggleColumn::make('is_active')
-                    ->onColor('success'),
+                ToggleColumn::make('is_active'),
 
-                ToggleColumn::make('is_visible')
-                    ->onColor('success'),
+                ToggleColumn::make('is_visible'),
 
-                ToggleColumn::make('is_highlighted')
-                    ->onColor('success'),
+                ToggleColumn::make('is_highlighted'),
 
                 TextColumn::make('created_at')
                     ->label(__('Created At'))
