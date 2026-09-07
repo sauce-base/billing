@@ -463,7 +463,9 @@ class BillingService
         } elseif (isset($payload['cancel_at']) && $payload['cancel_at']) {
             $updates['cancelled_at'] = now();
             $updates['ends_at'] = Carbon::createFromTimestamp($payload['cancel_at']);
-        } elseif (isset($payload['cancel_at_period_end']) && ! $payload['cancel_at_period_end'] && empty($payload['cancel_at'])) {
+            // Reaching here means the first branch already ruled out a truthy
+            // `cancel_at_period_end`, so only its presence still needs checking.
+        } elseif (isset($payload['cancel_at_period_end']) && empty($payload['cancel_at'])) {
             $updates['cancelled_at'] = null;
             $updates['ends_at'] = null;
         }

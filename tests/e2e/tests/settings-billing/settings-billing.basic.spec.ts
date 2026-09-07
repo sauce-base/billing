@@ -7,6 +7,14 @@ test.describe.parallel('Settings Billing Basics', () => {
         await expect(page).toHaveURL('/auth/login');
     });
 
+    test('the billing route redirects into the settings fragment', async ({ page, loginAs, credentials }) => {
+        await loginAs(credentials.user);
+        await page.goto('/settings/billing');
+
+        await expect(page).toHaveURL(/#settings\/billing$/);
+        await expect(page.getByTestId('settings-billing-panel')).toBeVisible();
+    });
+
     test('shows empty state for user without active subscription', async ({
         page,
         loginAs,
