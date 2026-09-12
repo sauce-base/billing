@@ -45,11 +45,3 @@ Navigation::addWhen(
     }
 );
 
-Navigation::add('Billing', fn () => route('settings.billing'), function (Section $section) {
-    $section->attributes([
-        'group' => 'settings',
-        'slug' => 'billing',
-        'icon' => 'billing',
-        'order' => 30,
-    ]);
-});

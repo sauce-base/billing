@@ -10,6 +10,7 @@ export class SettingsBillingPage {
     readonly cancelDialogConfirm: Locator;
     readonly cancelDialogCancel: Locator;
     readonly noSubscription: Locator;
+    readonly panel: Locator;
 
     constructor(page: Page) {
         this.page = page;
@@ -21,10 +22,17 @@ export class SettingsBillingPage {
         this.cancelDialogConfirm = page.getByTestId('confirm-dialog-confirm');
         this.cancelDialogCancel = page.getByTestId('confirm-dialog-cancel');
         this.noSubscription = page.getByTestId('no-subscription');
+        this.panel = page.getByTestId('settings-billing-panel');
     }
 
+    /**
+     * Billing is a section of the settings modal, reached by fragment. The
+     * `/settings/billing` route still exists for Stripe to return to, and
+     * redirects here — see the redirect test in the basic spec.
+     */
     async goto() {
-        await this.page.goto('/settings/billing');
+        await this.page.goto('/dashboard#settings/billing');
+        await this.panel.waitFor();
     }
 
     async expectNoSubscription() {

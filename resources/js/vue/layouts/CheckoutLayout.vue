@@ -19,7 +19,7 @@ defineProps<{
         >
             <div class="mx-auto max-w-5xl">
                 <Link :href="route('index')">
-                    <AppLogo size="sm" :showText="true" />
+                    <AppLogo size="sm" />
                 </Link>
             </div>
         </header>

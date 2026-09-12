@@ -27,6 +27,8 @@ Route::middleware('web')->group(function (): void {
         Route::post('/billing/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('billing.subscription.cancel');
         Route::post('/billing/subscription/resume', [SubscriptionController::class, 'resume'])->name('billing.subscription.resume');
 
+        // Stripe returns here after checkout; it fulfils the session and then
+        // hands off to the billing section of the settings modal.
         Route::get('/settings/billing', [SettingsBillingController::class, 'show'])->name('settings.billing');
     });
 });

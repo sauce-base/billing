@@ -2,7 +2,7 @@
 import { router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-import type { Price, Product } from '@modules/Billing/resources/js/types';
+import type { Price, Product } from '@modules/billing/resources/js/types';
 import { getIntervalDisplay } from '../utils/intervals';
 
 const props = defineProps<{

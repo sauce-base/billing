@@ -10,12 +10,11 @@ import {
 } from '@/components/ui/card';
 import Separator from '@/components/ui/separator/Separator.vue';
 import { useDialog } from '@/composables/useDialog';
-import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { CreditCard, Loader2 } from '@lucide/vue';
 import { ref } from 'vue';
-import type { Invoice, PaymentMethod, Subscription } from '../types';
+import type { Invoice, PaymentMethod, Subscription } from '../../types';
 
 defineProps<{
     subscription: Subscription | null;
@@ -24,7 +23,6 @@ defineProps<{
     billingPortalUrl: string;
 }>();
 
-const title = 'Billing';
 const isCancelling = ref(false);
 const isResuming = ref(false);
 const { confirm } = useDialog();
@@ -115,18 +113,21 @@ function resumeSubscription() {
 </script>
 
 <template>
-    <SettingsLayout :title="title">
-        <template #header>
-            <h1 class="text-2xl font-bold">
-                {{ $t('Billing') }}
-            </h1>
-        </template>
+    <div data-testid="settings-billing-panel">
+        <div class="mb-6 space-y-1.5">
+            <h2 class="text-lg font-semibold">{{ $t('Billing') }}</h2>
+            <p class="text-muted-foreground text-sm">
+                {{
+                    $t('Manage your subscription, payment method, and invoices')
+                }}
+            </p>
+        </div>
 
         <!-- Has subscription -->
         <Card
             v-if="subscription"
             data-testid="subscription-section"
-            class="max-w-3xl"
+            class="w-full"
         >
             <CardHeader>
                 <CardTitle>{{ $t('Billing & Subscription') }}</CardTitle>
@@ -457,7 +458,7 @@ function resumeSubscription() {
         <div
             v-else
             data-testid="no-subscription"
-            class="flex max-w-3xl flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-12 text-center dark:border-gray-700"
+            class="flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-12 text-center dark:border-gray-700"
         >
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                 {{ $t('No active subscription') }}
@@ -471,5 +472,5 @@ function resumeSubscription() {
                 </Button>
             </a>
         </div>
-    </SettingsLayout>
+    </div>
 </template>
